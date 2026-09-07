@@ -4,6 +4,36 @@
 (() => {
   'use strict';
 
+  function loadTangoCho2Extras() {
+    try {
+      const themeMeta = document.querySelector('meta[name="theme-color"]');
+      if (themeMeta) themeMeta.setAttribute('content', '#fffaf2');
+
+      if (!document.querySelector('link[data-tc2-theme]')) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = './tangocho2-theme.css?v=0.3.0';
+        link.dataset.tc2Theme = '1';
+        document.head.appendChild(link);
+      }
+
+      [
+        './tangocho2-example-sync.js?v=0.3.0',
+        './tangocho2-behavior.js?v=0.3.0',
+        './tangocho2-progress.js?v=0.3.0'
+      ].forEach(src => {
+        if (document.querySelector(`script[data-tc2-extra="${src}"]`)) return;
+        const script = document.createElement('script');
+        script.src = src;
+        script.async = false;
+        script.dataset.tc2Extra = src;
+        document.head.appendChild(script);
+      });
+    } catch (_) {}
+  }
+
+  loadTangoCho2Extras();
+
   const DAILY_PREFIX = 'tangoCho2DailyFiveWords:v1:';
   const LEVEL_KEY = 'tangoCho2FiveWordsLevel';
 
@@ -76,7 +106,6 @@
     }
 
     const existing = [...new Set(currentVocabulary().map(w => w.toLowerCase()))];
-    // Keep the prompt bounded even for a very large collection.
     const avoid = existing.slice(-3000).join(', ') || '(none)';
 
     const instruction = [
@@ -122,7 +151,9 @@
         const memo = document.getElementById('memo');
         const example = document.getElementById('example');
         const tags = document.getElementById('tags');
+        const status = document.getElementById('status');
 
+        if (status) status.value = 'default';
         if (meaning && !meaning.value.trim()) meaning.value = item.meaning || '';
         if (memo && !memo.value.trim()) memo.value = item.note || '';
         if (example && !example.value.trim()) example.value = lesson.sentence || '';
@@ -165,6 +196,7 @@
 
     root.querySelectorAll('.tc2-word').forEach(btn => {
       btn.addEventListener('click', () => {
+        if (btn.dataset.registered === '1') return;
         const item = lesson.words[Number(btn.dataset.index)];
         if (item) pickIntoTangoCho(item, lesson);
       });
@@ -273,7 +305,7 @@
         saveLesson(date, levelEl.value, lesson);
         renderLesson(result, lesson);
         btn.textContent = '5語を再生成';
-        status.textContent = '単語をタップすると「追加」画面へ送れます。';
+        status.textContent = '🔊で発音を確認してから、必要な単語を単語帳へ拾えます。';
       } catch (e) {
         console.error(e);
         status.textContent = e?.message || '生成に失敗しました。';
@@ -287,8 +319,6 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    // Run after TANGO-CHO's own DOMContentLoaded setup so the legacy Fortune
-    // setup can finish safely before its UI is replaced.
     setTimeout(() => {
       installStyles();
       installFiveWordsTab();
