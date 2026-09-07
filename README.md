@@ -18,7 +18,7 @@
 ## UI Preview
 
 <p align="center">
-  <img src="./docs/tangocho2-ui-preview.svg" width="900" alt="TANGO-CHO2 UI preview">
+  <img src="./docs/tangocho2-ui-preview.jpg" width="900" alt="TANGO-CHO2 actual UI screenshot">
 </p>
 
 TANGO-CHOをベースに、従来の **Fortune(EN)** を廃止し、毎日5語をAIが選ぶ **5 WORDS** を語彙発見の入口として統合しました。
