@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-label="TANGO-CHO2 UI preview">
+  <rect width="1440" height="900" fill="#fffaf2"/>
+  <g font-family="Arial, 'Hiragino Kaku Gothic ProN', sans-serif" fill="#24231f">
+    <text x="250" y="92" font-size="38" font-weight="800">TANGO-CHO2</text>
+    <rect x="1030" y="50" width="160" height="54" rx="27" fill="#ffffff" stroke="#e9e1d5"/>
+    <text x="1110" y="84" font-size="17" font-weight="700" text-anchor="middle" fill="#777269">高校・大学受験</text>
+
+    <rect x="250" y="130" width="940" height="250" rx="32" fill="#ffffff" stroke="#e9e1d5"/>
+    <circle cx="1150" cy="156" r="80" fill="#ffe5c7" opacity=".8"/>
+    <text x="285" y="180" font-size="14" font-weight="800" letter-spacing="3" fill="#315d55">TODAY'S SMALL STEP</text>
+    <text x="285" y="235" font-size="42" font-weight="800">今日も、5語だけ。</text>
+    <text x="285" y="275" font-size="18" fill="#777269">毎日の5語を積み重ねて、自分の単語帳を育てていきます。</text>
+
+    <g>
+      <rect x="285" y="305" width="250" height="55" rx="18" fill="#f6efe5"/>
+      <text x="310" y="332" font-size="22" font-weight="800">125</text>
+      <text x="310" y="350" font-size="12" fill="#777269">覚えた新出語</text>
+      <rect x="550" y="305" width="250" height="55" rx="18" fill="#f6efe5"/>
+      <text x="575" y="332" font-size="22" font-weight="800">25</text>
+      <text x="575" y="350" font-size="12" fill="#777269">シール</text>
+      <rect x="815" y="305" width="250" height="55" rx="18" fill="#f6efe5"/>
+      <text x="840" y="332" font-size="22" font-weight="800">754</text>
+      <text x="840" y="350" font-size="12" fill="#777269">ゴールまで</text>
+    </g>
+
+    <g font-size="17" font-weight="700" text-anchor="middle">
+      <rect x="250" y="405" width="220" height="58" rx="16" fill="#ffffff" stroke="#e9e1d5"/><text x="360" y="441">追加</text>
+      <rect x="485" y="405" width="220" height="58" rx="16" fill="#ffffff" stroke="#e9e1d5"/><text x="595" y="441">単語帳</text>
+      <rect x="720" y="405" width="220" height="58" rx="16" fill="#ffffff" stroke="#e9e1d5"/><text x="830" y="441">クイズ</text>
+      <rect x="955" y="405" width="235" height="58" rx="16" fill="#24231f"/><text x="1072" y="441" fill="#ffffff">5 WORDS</text>
+    </g>
+
+    <text x="250" y="525" font-size="34" font-weight="800">5 WORDS × TANGO-CHO2</text>
+    <text x="250" y="558" font-size="17" fill="#777269">毎日5語と1つの英文。生成した5語は単語帳へ自動登録。</text>
+
+    <rect x="250" y="590" width="940" height="210" rx="26" fill="#ffffff" stroke="#e9e1d5"/>
+    <text x="285" y="630" font-size="14" font-weight="800" fill="#315d55">ENGLISH LEVEL</text>
+    <rect x="285" y="650" width="650" height="58" rx="15" fill="#ffffff" stroke="#e9e1d5"/>
+    <text x="310" y="686" font-size="19">高校・大学受験</text>
+    <rect x="955" y="650" width="200" height="58" rx="15" fill="#ef6b4a"/>
+    <text x="1055" y="686" font-size="18" font-weight="800" fill="#ffffff" text-anchor="middle">5語を再生成</text>
+    <text x="285" y="745" font-size="16" fill="#777269">🔊 発音を確認できます。登録済みの語は重複登録しません。</text>
+  </g>
+</svg>
