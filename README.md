@@ -18,7 +18,7 @@
 ## UI Preview
 
 <p align="center">
-  <img src="./docs/tangocho2-ui-preview.jpg" width="900" alt="TANGO-CHO2 actual UI screenshot">
+  <img src="./docs/tangocho2-ui-preview.png" width="900" alt="TANGO-CHO2 actual UI screenshot">
 </p>
 
 TANGO-CHOをベースに、従来の **Fortune(EN)** を廃止し、毎日5語をAIが選ぶ **5 WORDS** を語彙発見の入口として統合しました。
@@ -44,7 +44,7 @@ TANGO-CHOをベースに、従来の **Fortune(EN)** を廃止し、毎日5語�
 - 生成された **5語すべてを自動で単語帳へ登録**
 - 大文字・小文字の違いを含め、同じ単語は重複登録しない
 - 新規登録語の学習状態は **デフォルト**
-- 各単語を登録前・登録後とも **🔊 発音確認**可能
+- 各単語を **🔊 発音確認**可能
 - 5語すべてを自然に使った **ONE SENTENCE** を生成
 - 日本語訳・短いメモも保存
 - 同日の生成結果は端末内に保存
@@ -70,7 +70,9 @@ TANGO-CHOをベースに、従来の **Fortune(EN)** を廃止し、毎日5語�
 - **シール**
 - **ゴールまで**
 
-毎日の小さな進捗を、数字で確認できます。
+**ゴール日は固定日ではありません。最初に5 WORDSを始めた日を開始日として、その2年6か月後をゴールにします。**
+
+開始日とゴール日は端末内に保存され、毎日の残り日数が自動で更新されます。
 
 ---
 
@@ -157,6 +159,7 @@ APIキーはGitHubのソースコードには保存されず、単語帳のバ�
 | 必要な語を手動で追加 | 5語すべて自動登録 |
 | 例文生成は各機能ごと | 同じ単語では例文を共有・再利用 |
 | ダーク寄りUI | 5WORDSに寄せた白・アイボリー基調UI |
+| 固定的な期間表示 | 開始日から2年6か月をゴールにする進捗表示 |
 | TANGO-CHO用データ | TANGO-CHO2用データとして分離 |
 
 元のTANGO-CHOは変更せず、TANGO-CHO2を独立したアプリとして運用しています。
@@ -176,7 +179,7 @@ APIキーはGitHubのソースコードには保存されず、単語帳のバ�
 
 ### 2. 5 WORDSを生成
 
-**5 WORDS** タブでEnglish levelを選び、**今日の5語を生成** を押します。
+**5 WORDS** タブでEnglish levelを選び、5語を生成します。
 
 生成された5語は、既登録語を除いて単語帳へ自動登録されます。
 
@@ -198,15 +201,11 @@ APIキーはGitHubのソースコードには保存されず、単語帳のバ�
 
 ### iPhone / iPad
 
-SafariでLive Demoを開き、
-
-**共有 → ホーム画面に追加**
+SafariでLive Demoを開き、**共有 → ホーム画面に追加**。
 
 ### Android
 
-ChromeでLive Demoを開き、
-
-**アプリをインストール** または **ホーム画面に追加**
+ChromeでLive Demoを開き、**アプリをインストール** または **ホーム画面に追加**。
 
 ---
 
@@ -250,7 +249,7 @@ https://wordnet.princeton.edu/license-and-commercial-use
 - 重複登録防止
 - 発音ボタン
 - ONE SENTENCE共有
-- 進捗表示
+- 開始日から **2年6か月** の進捗表示
 - English level連動表示
 - 削除した語を勝手に復活させない
 - かわいいTANGO-CHO2専用アイコン
@@ -258,4 +257,4 @@ https://wordnet.princeton.edu/license-and-commercial-use
 ---
 
 **TANGO-CHO2**  
-毎日5語だけ。単語帳を少しずつ育てるためのPWA。
+毎日5語だけ。2年半かけて単語帳を少しずつ育てるためのPWA。
