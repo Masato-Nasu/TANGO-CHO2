@@ -4,6 +4,13 @@
 
   const GOAL = '2028-09-30';
   const LESSON_PREFIX = 'tangoCho2DailyFiveWords:v1:';
+  const LEVEL_KEY = 'tangoCho2FiveWordsLevel';
+
+  const LEVEL_LABELS = {
+    jhs: '中学生',
+    hs: '高校・大学受験',
+    adult: '大人 / TOEIC 800+'
+  };
 
   function localDateKey(d = new Date()) {
     const y = d.getFullYear();
@@ -21,10 +28,18 @@
     return Math.max(0, Math.round((parseDate(b) - parseDate(a)) / 86400000));
   }
 
-  function phaseFor(k) {
-    if (k < '2027-04-01') return '高1 基礎';
-    if (k < '2028-04-01') return '高2 標準';
-    return '高3 実戦';
+  function currentLevel() {
+    const select = document.getElementById('tc2FiveLevel');
+    if (select && LEVEL_LABELS[select.value]) return select.value;
+    try {
+      const saved = localStorage.getItem(LEVEL_KEY);
+      if (saved && LEVEL_LABELS[saved]) return saved;
+    } catch (_) {}
+    return 'adult';
+  }
+
+  function currentLevelLabel() {
+    return LEVEL_LABELS[currentLevel()] || LEVEL_LABELS.adult;
   }
 
   function validLesson(raw) {
@@ -108,19 +123,35 @@
     if (learned) learned.textContent = c.learned.toLocaleString();
     if (stickers) stickers.textContent = c.stickers.toLocaleString();
     if (left) left.textContent = c.daysLeft.toLocaleString();
-    if (phase) phase.textContent = phaseFor(localDateKey());
+    if (phase) phase.textContent = currentLevelLabel();
+  }
+
+  function bindLevelSelector() {
+    const select = document.getElementById('tc2FiveLevel');
+    if (!select || select.dataset.tc2ProgressBound === '1') return;
+    select.dataset.tc2ProgressBound = '1';
+    select.addEventListener('change', () => setTimeout(update, 0));
   }
 
   function init() {
     update();
+    bindLevelSelector();
+
     const fortune = document.getElementById('fortuneSection');
     if (fortune) {
       let timer = 0;
       new MutationObserver(() => {
         clearTimeout(timer);
-        timer = setTimeout(update, 80);
+        timer = setTimeout(() => {
+          bindLevelSelector();
+          update();
+        }, 80);
       }).observe(fortune, { childList: true, subtree: true, characterData: true });
     }
+
+    document.addEventListener('change', (event) => {
+      if (event.target && event.target.id === 'tc2FiveLevel') setTimeout(update, 0);
+    }, true);
     document.addEventListener('click', () => setTimeout(update, 500), true);
     window.addEventListener('storage', update);
   }
