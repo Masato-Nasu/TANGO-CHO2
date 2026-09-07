@@ -4,8 +4,8 @@
   "lang": "ja",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#050505",
-  "theme_color": "#00c896",
+  "background_color": "#fffaf2",
+  "theme_color": "#fffaf2",
   "id": "./",
   "scope": "./",
   "icons": [
