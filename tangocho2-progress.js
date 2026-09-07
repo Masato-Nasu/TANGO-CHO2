@@ -2,7 +2,6 @@
 (() => {
   'use strict';
 
-  const START = '2026-08-09';
   const GOAL = '2028-09-30';
   const LESSON_PREFIX = 'tangoCho2DailyFiveWords:v1:';
 
@@ -112,7 +111,7 @@
     if (phase) phase.textContent = phaseFor(localDateKey());
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
+  function init() {
     update();
     const fortune = document.getElementById('fortuneSection');
     if (fortune) {
@@ -124,5 +123,8 @@
     }
     document.addEventListener('click', () => setTimeout(update, 500), true);
     window.addEventListener('storage', update);
-  });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once:true });
+  else init();
 })();
