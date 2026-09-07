@@ -1,0 +1,14 @@
+/* TANGO-CHO2 v0.4 layout alignment */
+.tc2-progress-hero{
+  width:calc(100% - 32px)!important;
+  max-width:688px!important;
+  box-sizing:border-box!important;
+  margin:8px auto 14px!important;
+}
+
+@media(max-width:420px){
+  .tc2-progress-hero{
+    width:calc(100% - 32px)!important;
+    margin:8px auto 14px!important;
+  }
+}
