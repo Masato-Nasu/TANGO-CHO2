@@ -6,15 +6,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <!-- iOS (Safari) standalone support -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="TANGO-CHO2" />
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon-v26.png" />
+  <link rel="icon" type="image/svg+xml" href="./icons/tangocho2-cute.svg?v=0.4.0" />
   <link rel="icon" sizes="192x192" href="./icons/icon-192-v26.png" />
   <link rel="icon" sizes="512x512" href="./icons/icon-512-v26.png" />
 
-  <meta name="theme-color" content="#00c896" />
+  <meta name="theme-color" content="#fffaf2" />
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="style.css?v=48.0.3" />
+  <link rel="stylesheet" href="tangocho2-layout-fix.css?v=0.4.0" />
   <style>
     .ai-assist-btn{
       width:100%;max-width:100%;box-sizing:border-box;
@@ -260,11 +262,12 @@
   <script src="tangocho2-storage-shim.js?v=0.1.0"></script>
   <script src="script.js?v=48.0.3"></script>
   <script src="api-response-fix.js?v=48.0.4"></script>
-  <script src="tangocho2-fivewords.js?v=0.1.0"></script>
+  <script src="tangocho2-fivewords.js?v=0.4.0"></script>
+  <script src="tangocho2-auto-register.js?v=0.4.0"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=2.0.0").catch(console.error);
+        navigator.serviceWorker.register("./service-worker.js?v=0.4.0").catch(console.error);
       });
     }
   </script>
