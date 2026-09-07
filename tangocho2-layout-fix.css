@@ -6,6 +6,13 @@ body #tc2ProgressHero.tc2-progress-hero{
   margin:8px auto 14px!important;
 }
 
+/* Keep registered 5 WORDS cards visually white instead of dimming them. */
+html body #fortuneSection .tc2-word[data-registered="1"]{
+  opacity:1!important;
+  background:#fff!important;
+  color:var(--ink)!important;
+}
+
 @media(max-width:420px){
   body #tc2ProgressHero.tc2-progress-hero{
     width:calc(100% - 32px)!important;
