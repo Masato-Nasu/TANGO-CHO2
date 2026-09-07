@@ -24,12 +24,13 @@
     return new Date(y, (m || 1) - 1, d || 1);
   }
 
-  function addYears(dateKey, years) {
+  function addMonths(dateKey, months) {
     const d = parseDate(dateKey);
-    const month = d.getMonth();
-    d.setFullYear(d.getFullYear() + years);
-    // 2/29 -> 2/28 on non-leap target years.
-    if (d.getMonth() !== month) d.setDate(0);
+    const originalDay = d.getDate();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + months);
+    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(originalDay, lastDay));
     return localDateKey(d);
   }
 
@@ -101,7 +102,7 @@
     });
 
     const startDate = studyStartDate(history);
-    const goalDate = addYears(startDate, 3);
+    const goalDate = addMonths(startDate, 30);
 
     return {
       learned: unique.size,
