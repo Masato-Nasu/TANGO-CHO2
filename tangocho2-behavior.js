@@ -47,8 +47,6 @@
     return words().some(item => {
       const existing = normalize(item?.word);
       if (!existing || existing !== current) return false;
-      // Editing the same existing entry is allowed. Changing it to another
-      // already-registered word is still blocked.
       return !(original && original === current);
     });
   }
@@ -99,7 +97,6 @@
     forceDefaultStatus();
     const status = document.getElementById('status');
     if (status) {
-      status.disabled = true;
       const wrap = status.parentElement;
       if (wrap) {
         wrap.style.display = 'none';
@@ -149,11 +146,13 @@
     }
   });
 
-  document.addEventListener('DOMContentLoaded', () => {
+  function init() {
     simplifyAddUi();
     enhanceFiveWords();
-
     const observer = new MutationObserver(() => enhanceFiveWords());
     observer.observe(document.body, { childList: true, subtree: true });
-  });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once:true });
+  else init();
 })();
