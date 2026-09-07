@@ -2,9 +2,9 @@
 (() => {
   'use strict';
 
-  const GOAL = '2028-09-30';
   const LESSON_PREFIX = 'tangoCho2DailyFiveWords:v1:';
   const LEVEL_KEY = 'tangoCho2FiveWordsLevel';
+  const START_DATE_KEY = 'tangoCho2StudyStartDate';
 
   const LEVEL_LABELS = {
     jhs: '中学生',
@@ -22,6 +22,15 @@
   function parseDate(k) {
     const [y,m,d] = String(k).split('-').map(Number);
     return new Date(y, (m || 1) - 1, d || 1);
+  }
+
+  function addYears(dateKey, years) {
+    const d = parseDate(dateKey);
+    const month = d.getMonth();
+    d.setFullYear(d.getFullYear() + years);
+    // 2/29 -> 2/28 on non-leap target years.
+    if (d.getMonth() !== month) d.setDate(0);
+    return localDateKey(d);
   }
 
   function daysBetween(a, b) {
@@ -67,6 +76,20 @@
     return byDate;
   }
 
+  function studyStartDate(history) {
+    try {
+      const saved = localStorage.getItem(START_DATE_KEY);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(saved || '')) return saved;
+    } catch (_) {}
+
+    const dates = Array.from(history.keys()).sort();
+    if (!dates.length) return localDateKey();
+
+    const start = dates[0];
+    try { localStorage.setItem(START_DATE_KEY, start); } catch (_) {}
+    return start;
+  }
+
   function counts() {
     const history = lessonHistory();
     const unique = new Set();
@@ -76,10 +99,16 @@
         if (word) unique.add(word);
       });
     });
+
+    const startDate = studyStartDate(history);
+    const goalDate = addYears(startDate, 3);
+
     return {
       learned: unique.size,
       stickers: history.size,
-      daysLeft: daysBetween(localDateKey(), GOAL)
+      startDate,
+      goalDate,
+      daysLeft: daysBetween(localDateKey(), goalDate)
     };
   }
 
@@ -122,7 +151,10 @@
     const phase = document.getElementById('tc2PhasePill');
     if (learned) learned.textContent = c.learned.toLocaleString();
     if (stickers) stickers.textContent = c.stickers.toLocaleString();
-    if (left) left.textContent = c.daysLeft.toLocaleString();
+    if (left) {
+      left.textContent = c.daysLeft.toLocaleString();
+      left.title = `開始 ${c.startDate} / ゴール ${c.goalDate}`;
+    }
     if (phase) phase.textContent = currentLevelLabel();
   }
 
