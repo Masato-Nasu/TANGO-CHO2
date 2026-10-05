@@ -14,7 +14,7 @@
   };
   function payload() {
     return {
-      app: 'TANGO-CHO2', backupVersion: 1, version: '0.6.0', exportedAt: new Date().toISOString(),
+      app: 'TANGO-CHO2', backupVersion: 1, version: '0.7.0', exportedAt: new Date().toISOString(),
       words: parse(WORDS, []),
       part5: parse(PART5, {words:{},sessions:[]}),
       studyHistory: parse(STUDY, [])
@@ -126,10 +126,49 @@
     }
     return result;
   }
-  async function restore(data) {
+  async function restore(data, correctSpelling = false) {
     const incoming = validate(data);
+    const corrections = new Map();
+    if (correctSpelling && typeof window.tc2CorrectSpelling === 'function') {
+      for (const item of incoming.words) {
+        const original = item.word;
+        const result = await window.tc2CorrectSpelling(original);
+        if (result.value !== original) {
+          item.word = result.value;
+          corrections.set(original, result.value);
+        }
+      }
+      // Keep past results attached to the corrected spelling and combine collisions.
+      if (corrections.size) {
+        if (!incoming.part5) incoming.part5 = parse(PART5, {words:{},sessions:[]});
+        const normalized = s => s.trim().toLowerCase().replace(/\s+/g,' ');
+        const names = new Map([...corrections].map(([a,b])=>[normalized(a),b]));
+        const stats = structuredClone(incoming.part5);
+        const words = Object.create(null);
+        for (const record of Object.values(stats.words)) {
+          record.word = names.get(normalized(record.word)) || record.word;
+          const key = normalized(record.word);
+          if (words[key]) {
+            words[key].attempts += record.attempts;
+            words[key].correct += record.correct;
+            words[key].ms += record.ms;
+            if (String(record.lastAnsweredAt || '') > String(words[key].lastAnsweredAt || '')) words[key].lastAnsweredAt = record.lastAnsweredAt;
+          } else words[key] = record;
+        }
+        stats.words = words;
+        for (const session of stats.sessions) {
+          if (Array.isArray(session.results)) for (const result of session.results) {
+            if (typeof result.word === 'string') result.word = names.get(normalized(result.word)) || result.word;
+          }
+        }
+        incoming.part5 = stats;
+      }
+    }
+    const correctionText = corrections.size ? `スペル修正（${corrections.size}語）：\n${[...corrections].map(([a,b])=>`${a} → ${b}`).join('\n')}` : '';
+    if (correctionText) message(correctionText);
+
     const text = `単語帳を${incoming.words.length}語に復元します。${incoming.part5 ? 'PART 5の成績も復元します。' : 'PART 5の成績は変更しません。'}現在のデータは自動バックアップに退避します。よろしいですか？`;
-    if (!confirm(text)) return;
+    if (!confirm(text + (correctionText ? '\n\n'+correctionText : ''))) return;
     // Ensure the current state really exists in history before replacing it.
     clearTimeout(timer);
     await queue;
@@ -165,7 +204,7 @@
     ev.stopImmediatePropagation();
     const file = ev.target.files?.[0];
     if (!file) return;
-    try { await restore(JSON.parse(await file.text())); }
+    try { await restore(JSON.parse(await file.text()), true); }
     catch (e) { message(e.message || 'JSONを読み込めませんでした。'); }
     finally { ev.target.value = ''; }
   },true);

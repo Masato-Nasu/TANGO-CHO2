@@ -109,7 +109,7 @@ async function complete(page,count,wrongFirst=false) {
  await page.locator('#word').fill('regression');
  await page.locator('#meaning').fill('回帰');
  await page.locator('#saveBtn').click();
- assert(await page.evaluate(()=>loadWords().some(w=>w.word==='regression' && w.meaning==='回帰')));
+ await page.waitForFunction(()=>loadWords().some(w=>w.word==='regression' && w.meaning==='回帰'));
  console.log('PASS: existing vocabulary list, add/save and ordinary four-choice quiz');
  console.log('PASS: repeat 5 WORDS generation on same date, automatic registration, deletion respected, original storage intact, mobile layout');
  await context.close();
@@ -120,9 +120,9 @@ async function complete(page,count,wrongFirst=false) {
  await p.waitForFunction(()=>navigator.serviceWorker.controller!==null,{timeout:90000});
  assert((await p.evaluate(()=>caches.keys())).includes('tango-cho2-cache-v0.4.0'));
  await p.evaluate(async()=>{localStorage.setItem('tangoCho2Words',JSON.stringify([{id:'pwa',word:'care',meaning:'注意',status:'fuzzy'}]));await caches.open('tango-cho-cache-original');});
- for(const file of ['index.html','service-worker.js','tangocho2-fivewords.js','tangocho2-auto-register.js','tangocho2-progress.js','tangocho2-layout-fix.css','tangocho2-part5.js','tangocho2-backup.js']) fs.copyFileSync(`${repo}/${file}`,`${upgradeDir}/${file}`);
+ for(const file of ['index.html','service-worker.js','tangocho2-fivewords.js','tangocho2-auto-register.js','tangocho2-progress.js','tangocho2-layout-fix.css','tangocho2-part5.js','tangocho2-backup.js','tangocho2-spelling.js']) fs.copyFileSync(`${repo}/${file}`,`${upgradeDir}/${file}`);
  await p.reload();
- await p.waitForFunction(async()=> (await caches.keys()).includes('tango-cho2-cache-v0.6.0') && !(await caches.keys()).includes('tango-cho2-cache-v0.4.0'),{timeout:90000});
+ await p.waitForFunction(async()=> (await caches.keys()).includes('tango-cho2-cache-v0.7.0') && !(await caches.keys()).includes('tango-cho2-cache-v0.4.0'),{timeout:90000});
  assert((await p.evaluate(()=>caches.keys())).includes('tango-cho-cache-original'));
  await p.locator('[data-section="part5Section"]').click();
  assert(await p.locator('#p5Start').isVisible());

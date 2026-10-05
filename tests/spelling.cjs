@@ -1,0 +1,42 @@
+const {chromium}=require('playwright');
+const assert=require('node:assert/strict'),fs=require('node:fs'),http=require('node:http'),path=require('node:path');
+const repo=path.resolve(__dirname,'..');
+(async()=>{
+ const server=http.createServer((req,res)=>{let pathname=new URL(req.url,'http://localhost').pathname;if(pathname.endsWith('/'))pathname+='index.html';const file=path.join(repo,pathname);try{res.setHeader('Content-Type',file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.html')?'text/html':'application/json');res.end(fs.readFileSync(file));}catch(_){res.writeHead(404);res.end();}});
+ await new Promise(r=>server.listen(8768,'127.0.0.1',r));
+ const browser=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE_PATH||undefined,args:['--no-sandbox','--disable-gpu','--no-zygote']});
+ const context=await browser.newContext({serviceWorkers:'block'}),page=await context.newPage();const errors=[];let aiCalls=0;
+ page.on('pageerror',e=>errors.push(e.message));
+ await page.route('https://cdn.jsdelivr.net/**',r=>r.fulfill({body:''}));
+ await page.route('https://api.openai.com/**',r=>{aiCalls++;return r.abort();});
+ await page.goto('http://127.0.0.1:8768/');
+ const fix=word=>page.evaluate(async word=>(await tc2CorrectSpelling(word)).value,word);
+ for(const [a,b] of [['recieve','receive'],['commitee','committee'],['Recieve','Receive'],['recieve an adress','receive an address'],['dependant','dependant'],['calender','calender'],['NASA','NASA'],['Masato','Masato'],['studies','studies'],['running','running'],['accommodation','accommodation']])assert.equal(await fix(a),b,a);
+ const ambiguous=await page.evaluate(()=>tc2CorrectSpelling('bokk'));assert.equal(ambiguous.value,'bokk');assert(ambiguous.candidates.length>1);
+ console.log('PASS: common typos, expressions, valid inflections, legitimate alternative words, names, acronyms and ambiguous candidates');
+ await page.locator('#word').fill('recieve');await page.locator('#meaning').fill('受け取る');await page.locator('#saveBtn').click();
+ await page.waitForFunction(()=>loadWords().some(x=>x.word==='receive'));
+ assert.equal(await page.evaluate(()=>loadWords().length),1);
+ // Existing duplicate guard sees the corrected spelling.
+ await page.locator('#word').fill('recieve');await page.locator('#meaning').fill('受け取る');await page.locator('#saveBtn').click();await page.waitForTimeout(100);
+ assert.equal(await page.evaluate(()=>loadWords().length),1);
+ // Replay must not undo an asynchronous handler's disabled state.
+ await page.evaluate(()=>document.getElementById('translateBtn').addEventListener('click',function(e){e.stopImmediatePropagation();this.disabled=true;},true));
+ await page.locator('#word').fill('commitee');await page.locator('#translateBtn').click();await page.waitForTimeout(300);
+ assert.equal(await page.locator('#word').inputValue(),'committee');assert(await page.locator('#translateBtn').isDisabled());
+ console.log('PASS: correction before saving, corrected-word duplicate prevention, and asynchronous button state');
+ await page.locator('#connSettingsCard summary').click();
+ const incoming={words:[{id:'typo',word:'recieve',meaning:'受け取る',status:'fuzzy',memo:'保持'}],part5:{words:{recieve:{word:'recieve',attempts:2,correct:1,ms:500},receive:{word:'receive',attempts:1,correct:1,ms:200}},sessions:[{results:[{word:'recieve',correct:false,ms:200}]}]}};
+ let dialogText='';page.once('dialog',d=>{dialogText=d.message();d.dismiss();});
+ const upload=()=>page.locator('#importJsonInput').setInputFiles({name:'backup.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(incoming))});
+ await upload();await page.waitForTimeout(150);assert(dialogText.includes('recieve → receive'));
+ assert.equal(await page.evaluate(()=>loadWords().length),1);assert.notEqual(await page.evaluate(()=>loadWords()[0].id),'typo');
+ page.once('dialog',d=>d.accept());await Promise.all([page.waitForEvent('load'),upload()]);
+ const result=await page.evaluate(()=>({words:loadWords(),stats:JSON.parse(localStorage.getItem('tangoCho2Part5Stats:v1'))}));
+ assert.equal(result.words[0].word,'receive');assert.equal(result.words[0].status,'fuzzy');assert.equal(result.words[0].memo,'保持');assert.equal(result.stats.words.receive.attempts,3);assert.equal(result.stats.words.receive.correct,2);assert.equal(result.stats.words.receive.ms,700);assert.equal(result.stats.sessions[0].results[0].word,'receive');assert.equal(Object.keys(result.stats.words).length,1);
+ await page.locator('#connSettingsCard summary').click();
+ const downloadPromise=page.waitForEvent('download');await page.locator('#exportJsonBtn').click();const download=await downloadPromise;const json=JSON.parse(fs.readFileSync(await download.path(),'utf8'));assert.equal(json.words[0].word,'receive');
+ assert.equal(aiCalls,0);assert.deepEqual(errors,[]);
+ console.log('PASS: JSON correction preview, cancellation, metadata/status preservation, score collision merging, corrected export and zero AI calls');
+ await browser.close();server.close();
+})().catch(e=>{console.error(e);process.exit(1)});
