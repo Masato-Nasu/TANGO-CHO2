@@ -16,7 +16,7 @@
   <meta name="theme-color" content="#fffaf2" />
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="style.css?v=48.0.3" />
-  <link rel="stylesheet" href="tangocho2-layout-fix.css?v=0.4.0" />
+  <link rel="stylesheet" href="tangocho2-layout-fix.css?v=0.5.0" />
   <style>
     .ai-assist-btn{
       width:100%;max-width:100%;box-sizing:border-box;
@@ -35,6 +35,7 @@
     <button class="tab-button" data-section="listSection">単語帳</button>
     <button class="tab-button" data-section="quizSection">クイズ</button>
     <button class="tab-button" data-section="fortuneSection">5 WORDS</button>
+    <button class="tab-button" data-section="part5Section">PART 5</button>
   </nav>
 
   <main class="main">
@@ -251,6 +252,7 @@
         <div id="fortuneResults" class="fortune-results"></div>
       </div>
     </section>
+    <section id="part5Section" class="section"></section>
   </main>
 
   <footer class="app-footer">
@@ -262,12 +264,14 @@
   <script src="tangocho2-storage-shim.js?v=0.1.0"></script>
   <script src="script.js?v=48.0.3"></script>
   <script src="api-response-fix.js?v=48.0.4"></script>
-  <script src="tangocho2-fivewords.js?v=0.4.0"></script>
-  <script src="tangocho2-auto-register.js?v=0.4.0"></script>
+  <script src="tangocho2-fivewords.js?v=0.5.0"></script>
+  <script src="tangocho2-auto-register.js?v=0.5.0"></script>
+  <script src="tangocho2-part5.js?v=0.5.0"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=0.4.0").catch(console.error);
+        navigator.serviceWorker.register("./service-worker.js?v=0.5.0", { updateViaCache: 'none' })
+          .then(reg => reg.update()).catch(console.error);
       });
     }
   </script>

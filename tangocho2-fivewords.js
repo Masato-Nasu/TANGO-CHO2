@@ -20,7 +20,7 @@
       [
         './tangocho2-example-sync.js?v=0.3.0',
         './tangocho2-behavior.js?v=0.3.0',
-        './tangocho2-progress.js?v=0.3.0'
+        './tangocho2-progress.js?v=0.5.0'
       ].forEach(src => {
         if (document.querySelector(`script[data-tc2-extra="${src}"]`)) return;
         const script = document.createElement('script');
@@ -34,7 +34,8 @@
 
   loadTangoCho2Extras();
 
-  const DAILY_PREFIX = 'tangoCho2DailyFiveWords:v1:';
+  const LESSON_PREFIX = 'tangoCho2FiveWordsSet:v2:';
+  const LATEST_PREFIX = 'tangoCho2FiveWordsLatest:v2:';
   const LEVEL_KEY = 'tangoCho2FiveWordsLevel';
 
   const levelGuidance = {
@@ -43,18 +44,11 @@
     adult: 'Advanced adult Japanese learner / TOEIC 800+ level. Prefer useful but not obscure words seen in journalism, business, essays, and general nonfiction.'
   };
 
-  const localDateKey = (d = new Date()) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  };
-
   const esc = (s = '') => String(s).replace(/[&<>'"]/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
   }[c]));
 
-  const cacheKey = (date, level) => `${DAILY_PREFIX}${date}:${level}`;
+
 
   function getPreferredLevel() {
     const saved = localStorage.getItem(LEVEL_KEY);
@@ -68,19 +62,32 @@
     return 'adult';
   }
 
-  function savedLesson(date, level) {
+  function savedLesson(level) {
     try {
-      const raw = localStorage.getItem(cacheKey(date, level));
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      return isValidLesson(parsed) ? parsed : null;
-    } catch (_) {
-      return null;
-    }
+      const id = localStorage.getItem(`${LATEST_PREFIX}${level}`);
+      if (id) {
+        const lesson = JSON.parse(localStorage.getItem(`${LESSON_PREFIX}${id}`));
+        if (isValidLesson(lesson)) return lesson;
+      }
+      // Restore the latest old set once, retaining its original registration mark.
+      const keys = Object.keys(localStorage).filter(k => k.startsWith('tangoCho2DailyFiveWords:v1:') && k.endsWith(`:${level}`)).sort().reverse();
+      for (const key of keys) {
+        const lesson = JSON.parse(localStorage.getItem(key));
+        if (!isValidLesson(lesson)) continue;
+        lesson.legacyDate = key.slice('tangoCho2DailyFiveWords:v1:'.length, -level.length - 1);
+        saveLesson(level, lesson, `legacy-${lesson.legacyDate}-${level}`);
+        return lesson;
+      }
+    } catch (_) {}
+    return null;
   }
 
-  function saveLesson(date, level, lesson) {
-    try { localStorage.setItem(cacheKey(date, level), JSON.stringify(lesson)); } catch (_) {}
+  function saveLesson(level, lesson, id = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`) {
+    lesson.setId = id;
+    lesson.level = level;
+    lesson.generatedAt = lesson.generatedAt || new Date().toISOString();
+    localStorage.setItem(`${LESSON_PREFIX}${id}`, JSON.stringify(lesson));
+    localStorage.setItem(`${LATEST_PREFIX}${level}`, id);
   }
 
   function isValidLesson(x) {
@@ -100,7 +107,7 @@
     }
   }
 
-  async function generateLesson(date, level) {
+  async function generateLesson(level) {
     if (typeof callOpenAiJson !== 'function') {
       throw new Error('AI機能を読み込めませんでした。');
     }
@@ -109,7 +116,7 @@
     const avoid = existing.slice(-3000).join(', ') || '(none)';
 
     const instruction = [
-      'You create a daily five-word English vocabulary discovery set for a Japanese learner.',
+      'You create a five-word English vocabulary discovery set for a Japanese learner.',
       'Return only valid JSON with no markdown.',
       'Choose exactly five distinct English words that are genuinely useful at the requested level.',
       'Do not choose obscure specialist jargon, proper nouns, abbreviations, or inflected duplicates of the same base word.',
@@ -121,7 +128,6 @@
     ].join(' ');
 
     const input = [
-      `Date: ${date}`,
       `Level: ${level}`,
       `Level guidance: ${levelGuidance[level]}`,
       `Existing vocabulary to avoid: ${avoid}`
@@ -173,7 +179,7 @@
 
     root.innerHTML = `
       <div class="tc2-fivewords-card">
-        <div class="tc2-eyebrow">TODAY'S 5 WORDS</div>
+        <div class="tc2-eyebrow">5 WORDS</div>
         <div class="tc2-word-grid">
           ${lesson.words.map((w, i) => {
             const isRegistered = registered.has(w.word.toLowerCase());
@@ -243,9 +249,8 @@
       <div class="tc2-fivewords-head">
         <div>
           <h2 class="tc2-title">5 WORDS × TANGO-CHO2</h2>
-          <div class="tc2-sub">毎日5語と1つの英文。知らない語だけ拾って、自分の単語帳へ。</div>
+          <div class="tc2-sub">好きなときに5語と1つの英文を生成。5語は単語帳へ自動登録します。</div>
         </div>
-        <div class="pill" id="tc2FiveDate"></div>
       </div>
 
       <div class="tc2-fivewords-card">
@@ -258,34 +263,33 @@
               <option value="adult">大人 / TOEIC 800+</option>
             </select>
           </label>
-          <button id="tc2FiveGenerate" class="primary-btn" type="button">今日の5語を生成</button>
+          <button id="tc2FiveGenerate" class="primary-btn" type="button">5語を生成</button>
         </div>
-        <div class="tc2-sub">すでにTANGO-CHO2にある単語はAIに避けさせます。同じ日の生成結果は端末に保存されます。</div>
+        <div class="tc2-sub">すでにTANGO-CHO2にある単語はAIに避けさせます。回数制限はありません。生成セットは端末に保存されます。</div>
         <div id="tc2FiveStatus" class="tc2-status" aria-live="polite"></div>
       </div>
 
       <div id="tc2FiveResult"></div>`;
 
-    const date = localDateKey();
-    const dateEl = document.getElementById('tc2FiveDate');
     const levelEl = document.getElementById('tc2FiveLevel');
     const btn = document.getElementById('tc2FiveGenerate');
     const status = document.getElementById('tc2FiveStatus');
     const result = document.getElementById('tc2FiveResult');
 
-    dateEl.textContent = date.replaceAll('-', '/');
     levelEl.value = getPreferredLevel();
 
     const showCached = () => {
-      const lesson = savedLesson(date, levelEl.value);
+      const lesson = savedLesson(levelEl.value);
       result.innerHTML = '';
+      delete result.dataset.setId;
       if (lesson) {
+        result.dataset.setId = lesson.setId;
         renderLesson(result, lesson);
         btn.textContent = '5語を再生成';
-        status.textContent = '今日の5語を表示しています。';
+        status.textContent = '前回生成した5語を表示しています。';
         return true;
       }
-      btn.textContent = '今日の5語を生成';
+      btn.textContent = '5語を生成';
       status.textContent = '';
       return false;
     };
@@ -297,21 +301,24 @@
 
     btn.addEventListener('click', async () => {
       btn.disabled = true;
-      const hadCache = !!savedLesson(date, levelEl.value);
+      levelEl.disabled = true;
+      const hadCache = !!savedLesson(levelEl.value);
       btn.textContent = '5語を考えています…';
-      status.textContent = hadCache ? '今日のセットを作り直しています。' : '既登録語を避けながら選んでいます。';
+      status.textContent = hadCache ? '新しい5語を選んでいます。' : '既登録語を避けながら選んでいます。';
       try {
-        const lesson = await generateLesson(date, levelEl.value);
-        saveLesson(date, levelEl.value, lesson);
+        const lesson = await generateLesson(levelEl.value);
+        saveLesson(levelEl.value, lesson);
+        result.dataset.setId = lesson.setId;
         renderLesson(result, lesson);
         btn.textContent = '5語を再生成';
         status.textContent = '🔊で発音を確認してから、必要な単語を単語帳へ拾えます。';
       } catch (e) {
         console.error(e);
         status.textContent = e?.message || '生成に失敗しました。';
-        btn.textContent = hadCache ? '5語を再生成' : '今日の5語を生成';
+        btn.textContent = hadCache ? '5語を再生成' : '5語を生成';
       } finally {
         btn.disabled = false;
+        levelEl.disabled = false;
       }
     });
 

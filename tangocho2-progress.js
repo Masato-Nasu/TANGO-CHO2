@@ -4,39 +4,12 @@
 
   const LESSON_PREFIX = 'tangoCho2DailyFiveWords:v1:';
   const LEVEL_KEY = 'tangoCho2FiveWordsLevel';
-  const START_DATE_KEY = 'tangoCho2StudyStartDate';
 
   const LEVEL_LABELS = {
     jhs: '中学生',
     hs: '高校・大学受験',
     adult: '大人 / TOEIC 800+'
   };
-
-  function localDateKey(d = new Date()) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  }
-
-  function parseDate(k) {
-    const [y,m,d] = String(k).split('-').map(Number);
-    return new Date(y, (m || 1) - 1, d || 1);
-  }
-
-  function addMonths(dateKey, months) {
-    const d = parseDate(dateKey);
-    const originalDay = d.getDate();
-    d.setDate(1);
-    d.setMonth(d.getMonth() + months);
-    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-    d.setDate(Math.min(originalDay, lastDay));
-    return localDateKey(d);
-  }
-
-  function daysBetween(a, b) {
-    return Math.max(0, Math.round((parseDate(b) - parseDate(a)) / 86400000));
-  }
 
   function currentLevel() {
     const select = document.getElementById('tc2FiveLevel');
@@ -66,29 +39,14 @@
     try {
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (!key || !key.startsWith(LESSON_PREFIX)) continue;
+        if (!key || (!key.startsWith(LESSON_PREFIX) && !key.startsWith('tangoCho2FiveWordsSet:v2:'))) continue;
         const rest = key.slice(LESSON_PREFIX.length);
-        const date = rest.slice(0, 10);
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+        const date = key.startsWith(LESSON_PREFIX) ? rest.slice(0, 10) : key;
         const lesson = validLesson(localStorage.getItem(key));
-        if (lesson) byDate.set(date, lesson);
+        if (lesson) byDate.set(lesson.legacyDate ? lesson.legacyDate : date, lesson);
       }
     } catch (_) {}
     return byDate;
-  }
-
-  function studyStartDate(history) {
-    try {
-      const saved = localStorage.getItem(START_DATE_KEY);
-      if (/^\d{4}-\d{2}-\d{2}$/.test(saved || '')) return saved;
-    } catch (_) {}
-
-    const dates = Array.from(history.keys()).sort();
-    if (!dates.length) return localDateKey();
-
-    const start = dates[0];
-    try { localStorage.setItem(START_DATE_KEY, start); } catch (_) {}
-    return start;
   }
 
   function counts() {
@@ -101,16 +59,7 @@
       });
     });
 
-    const startDate = studyStartDate(history);
-    const goalDate = addMonths(startDate, 30);
-
-    return {
-      learned: unique.size,
-      stickers: history.size,
-      startDate,
-      goalDate,
-      daysLeft: daysBetween(localDateKey(), goalDate)
-    };
+    return { learned: unique.size, stickers: history.size };
   }
 
   function ensureUi() {
@@ -130,13 +79,13 @@
       hero.id = 'tc2ProgressHero';
       hero.className = 'tc2-progress-hero';
       hero.innerHTML = `
-        <div class="tc2-progress-eyebrow">TODAY'S SMALL STEP</div>
-        <h2>今日も、5語だけ。</h2>
-        <p>毎日の5語を積み重ねて、自分の単語帳を育てていきます。</p>
+        <div class="tc2-progress-eyebrow">YOUR VOCABULARY</div>
+        <h2>好きなときに、5語ずつ。</h2>
+        <p>5語の発見とPART 5の練習で、自分の単語帳を育てていきます。</p>
         <div class="tc2-progress-stats">
-          <div class="tc2-progress-stat"><b id="tc2LearnedCount">0</b><span>覚えた新出語</span></div>
-          <div class="tc2-progress-stat"><b id="tc2StickerCount">0</b><span>シール</span></div>
-          <div class="tc2-progress-stat"><b id="tc2DaysLeft">—</b><span>ゴールまで</span></div>
+          <div class="tc2-progress-stat"><b id="tc2LearnedCount">0</b><span>生成した語</span></div>
+          <div class="tc2-progress-stat"><b id="tc2StickerCount">0</b><span>生成セット</span></div>
+          <div class="tc2-progress-stat"><b id="tc2DaysLeft">—</b><span>登録語</span></div>
         </div>`;
       nav.parentNode.insertBefore(hero, nav);
     }
@@ -153,8 +102,7 @@
     if (learned) learned.textContent = c.learned.toLocaleString();
     if (stickers) stickers.textContent = c.stickers.toLocaleString();
     if (left) {
-      left.textContent = c.daysLeft.toLocaleString();
-      left.title = `開始 ${c.startDate} / ゴール ${c.goalDate}`;
+      left.textContent = (typeof loadWords === 'function' ? loadWords().length : 0).toLocaleString();
     }
     if (phase) phase.textContent = currentLevelLabel();
   }

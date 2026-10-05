@@ -2,7 +2,7 @@
 (() => {
   'use strict';
 
-  const PREFIX = 'tangoCho2DailyFiveWords:v1:';
+  const PREFIX = 'tangoCho2FiveWordsSet:v2:';
   const REGISTER_MARK_PREFIX = 'tangoCho2AutoRegistered:v2:';
   let busy = false;
 
@@ -11,15 +11,14 @@
 
   function currentLessonInfo() {
     const level = document.getElementById('tc2FiveLevel')?.value || '';
-    const dateText = document.getElementById('tc2FiveDate')?.textContent || '';
-    const date = dateText.trim().replaceAll('/', '-');
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !level) return null;
+    const id = document.getElementById('tc2FiveResult')?.dataset.setId;
+    if (!id || !level) return null;
     try {
-      const raw = localStorage.getItem(`${PREFIX}${date}:${level}`);
+      const raw = localStorage.getItem(`${PREFIX}${id}`);
       if (!raw) return null;
       const lesson = JSON.parse(raw);
       if (!Array.isArray(lesson?.words) || lesson.words.length !== 5) return null;
-      return { lesson, date, level };
+      return { lesson, id, level };
     } catch (_) {
       return null;
     }
@@ -29,8 +28,8 @@
     return (lesson?.words || []).map(w => normalize(w?.word)).filter(Boolean).join('|');
   }
 
-  function registrationMarkKey(date, level) {
-    return `${REGISTER_MARK_PREFIX}${date}:${level}`;
+  function registrationMarkKey(id) {
+    return `${REGISTER_MARK_PREFIX}${id}`;
   }
 
   async function registerLesson(lesson) {
@@ -125,11 +124,11 @@
     const info = currentLessonInfo();
     if (!info) return;
 
-    const { lesson, date, level } = info;
+    const { lesson, id, level } = info;
     const fingerprint = lessonFingerprint(lesson);
-    const markKey = registrationMarkKey(date, level);
+    const markKey = registrationMarkKey(id);
     let alreadyAutoRegistered = false;
-    try { alreadyAutoRegistered = localStorage.getItem(markKey) === fingerprint; } catch (_) {}
+    try { alreadyAutoRegistered = localStorage.getItem(markKey) === fingerprint || (lesson.legacyDate && localStorage.getItem(`${REGISTER_MARK_PREFIX}${lesson.legacyDate}:${level}`) === fingerprint); } catch (_) {}
 
     if (!alreadyAutoRegistered) {
       const added = await registerLesson(lesson);
