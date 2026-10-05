@@ -1,6 +1,6 @@
 /* TANGO-CHO2 Service Worker */
 const CACHE_PREFIX = 'tango-cho2-cache-';
-const CACHE_NAME = `${CACHE_PREFIX}v0.7.0`;
+const CACHE_NAME = `${CACHE_PREFIX}v0.8.0`;
 
 const CORE_ASSETS = [
   "./",
@@ -18,7 +18,7 @@ const CORE_ASSETS = [
   "./tangocho2-example-sync.js?v=0.3.0",
   "./tangocho2-behavior.js?v=0.3.0",
   "./tangocho2-progress.js?v=0.5.0",
-  "./tangocho2-part5.js?v=0.5.0",
+  "./tangocho2-part5.js?v=0.8.0",
   "./tangocho2-backup.js?v=0.7.0",
   "./tangocho2-spelling.js?v=0.7.0",
   "./manifest.json",
