@@ -66,7 +66,7 @@
     return "AIの応答が完了しませんでした。もう一度お試しください。";
   }
 
-  async function requestOnce({ apiKey, model, instruction, input, maxOutputTokens }) {
+  async function requestOnce({ apiKey, model, instruction, input, maxOutputTokens, responseSchema }) {
     const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
     const timer = ctrl ? setTimeout(() => ctrl.abort(), 60000) : null;
 
@@ -77,6 +77,8 @@
       max_output_tokens: maxOutputTokens,
       store: false,
     };
+
+    if (responseSchema) body.text = {format:{type:"json_schema",name:"tangocho2_part5",strict:true,schema:responseSchema}};
 
     // GPT-5 family models otherwise default to a larger reasoning budget.
     // For dictionary tasks, minimal reasoning leaves room for the visible JSON answer.
@@ -125,7 +127,7 @@
     return data || {};
   }
 
-  async function fixedCallOpenAiJson({ instruction, input, maxOutputTokens = 700 }) {
+  async function fixedCallOpenAiJson({ instruction, input, maxOutputTokens = 700, responseSchema }) {
     if (typeof ensureAiSettingsLoaded === "function") await ensureAiSettingsLoaded();
 
     const apiKey = typeof getOpenAiApiKey === "function" ? getOpenAiApiKey() : "";
@@ -143,6 +145,7 @@
       instruction,
       input,
       maxOutputTokens: firstLimit,
+      responseSchema,
     });
 
     let outputText = extractResponseText(data);
@@ -158,6 +161,7 @@
         instruction,
         input,
         maxOutputTokens: retryLimit,
+        responseSchema,
       });
       outputText = extractResponseText(data);
       reason = incompleteReason(data);
