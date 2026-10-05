@@ -14,7 +14,7 @@
   };
   function payload() {
     return {
-      app: 'TANGO-CHO2', backupVersion: 1, version: '0.7.0', exportedAt: new Date().toISOString(),
+      app: 'TANGO-CHO2', backupVersion: 1, version: '0.10.0', exportedAt: new Date().toISOString(),
       words: parse(WORDS, []),
       part5: parse(PART5, {words:{},sessions:[]}),
       studyHistory: parse(STUDY, [])
@@ -41,7 +41,7 @@
       req.onerror = () => reject(req.error);
     });
   }
-  async function saveSnapshot(data) {
+  async function saveSnapshot(data, refreshTimestamp = false) {
     const db = await openDb();
     const fingerprint = JSON.stringify({words:data.words,part5:data.part5,studyHistory:data.studyHistory});
     await new Promise((resolve,reject) => {
@@ -50,7 +50,11 @@
       const req = store.getAll();
       req.onsuccess = () => {
         const all = req.result;
-        if (all.at(-1)?.fingerprint === fingerprint) return;
+        const latest = all.at(-1);
+        if (latest?.fingerprint === fingerprint) {
+          if (refreshTimestamp) store.put({...latest,savedAt:data.exportedAt,payload:data});
+          return;
+        }
         store.add({savedAt:data.exportedAt,payload:data,fingerprint});
         all.slice(0,Math.max(0,all.length-4)).forEach(item => store.delete(item.id));
       };
@@ -60,15 +64,15 @@
     });
     await refreshHistory();
   }
-  function enqueue(data) {
-    queue = queue.then(() => saveSnapshot(data)).catch(() => {
+  function enqueue(data, refreshTimestamp = false) {
+    queue = queue.then(() => saveSnapshot(data,refreshTimestamp)).catch(() => {
       message('自動バックアップを保存できませんでした。JSONを書き出して退避してください。');
     });
     return queue;
   }
-  function snapshotNow() {
+  function snapshotNow(refreshTimestamp = false) {
     clearTimeout(timer);
-    try { return enqueue(payload()); }
+    try { return enqueue(payload(),refreshTimestamp); }
     catch (_) { message('自動バックアップのデータを読み取れませんでした。'); return Promise.resolve(); }
   }
 
@@ -103,7 +107,7 @@
     }
     if (items.some(item => String(item.id) === selected)) select.value = selected;
     document.getElementById('tc2BackupRestore').disabled = items.length === 0;
-    message(`直近${items.length}世代を端末内に保存しています（最大5世代）。`);
+    message(`アプリを開くたびに更新します。端末内に直近${items.length}世代を保存しています（最大5世代）。`);
   }
 
   function validate(data) {
@@ -208,7 +212,11 @@
     catch (e) { message(e.message || 'JSONを読み込めませんでした。'); }
     finally { ev.target.value = ''; }
   },true);
-  window.addEventListener('pagehide',snapshotNow);
+  window.addEventListener('pagehide',()=>snapshotNow());
+  window.addEventListener('pageshow',()=>snapshotNow(true));
+  document.addEventListener('visibilitychange',()=>{
+    if (document.visibilityState === 'visible') snapshotNow(true);
+  });
   window.addEventListener('storage',ev => { if (tracked.has(ev.key)) snapshotNow(); });
   document.addEventListener('DOMContentLoaded',() => {
     const exportButton = document.getElementById('exportJsonBtn');
@@ -228,6 +236,6 @@
         await restore(chosen.payload);
       } catch (e) { message(e.message || '復元できませんでした。'); }
     });
-    snapshotNow();
+    snapshotNow(true);
   });
 })();
