@@ -2,10 +2,10 @@ const {chromium}=require('playwright');
 const assert=require('node:assert/strict'),fs=require('node:fs'),http=require('node:http'),path=require('node:path');
 const repo=path.resolve(__dirname,'..');
 (async()=>{
- const server=http.createServer((req,res)=>{let name=new URL(req.url,'http://localhost').pathname;if(name.endsWith('/'))name+='index.html';const file=path.join(repo,name);try{res.setHeader('Content-Type',file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.html')?'text/html':'application/json');res.end(fs.readFileSync(file));}catch(_){res.writeHead(404);res.end();}});
+ const server=http.createServer((req,res)=>{let name=new URL(req.url,'http://localhost').pathname;if(name.endsWith('/'))name+='index.html';const file=path.join(repo,name);try{res.setHeader('Content-Type',file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.html')?'text/html':'application/json');let body=fs.readFileSync(file);if(process.env.MIXED_HTML && file.endsWith('index.html'))body=body.toString().replace(/<section id="p5WordDetailSection"[^>]*><\/section>/,'');res.end(body);}catch(_){res.writeHead(404);res.end();}});
  await new Promise(r=>server.listen(8771,'127.0.0.1',r));
  const browser=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE_PATH||undefined,args:['--no-sandbox','--disable-gpu','--no-zygote']});
- const context=await browser.newContext({serviceWorkers:'block',viewport:{width:390,height:844}}),page=await context.newPage(),errors=[];let aiCalls=0;
+ const context=await browser.newContext({serviceWorkers:'block',viewport:{width:390,height:844},hasTouch:true}),page=await context.newPage(),errors=[];let aiCalls=0;
  page.on('pageerror',e=>errors.push(e.message));await page.route('https://cdn.jsdelivr.net/**',r=>r.fulfill({body:''}));await page.route('https://api.openai.com/**',r=>{aiCalls++;return r.abort();});
  await page.addInitScript(()=>{
   localStorage.setItem('tangoCho2Words',JSON.stringify([{id:'flurry',word:'flurry',meaning:'にわか雪・慌ただしさ',example:'There was a flurry of activity.',memo:'メモ\n二行目 <script>window.bad=1</script>',synonyms:'burst, rush',tags:'TOEIC',status:'fuzzy'}]));
@@ -14,13 +14,13 @@ const repo=path.resolve(__dirname,'..');
  await page.goto('http://127.0.0.1:8771/');
  const baseline=await page.evaluate(()=>({words:localStorage.getItem('tangoCho2Words'),stats:localStorage.getItem('tangoCho2Part5Stats:v1')}));
  await page.locator('[data-section="part5Section"]').click();
- await page.getByRole('button',{name:'flurryの詳細を開く',exact:true}).press('Enter');await page.locator('#p5WordDetailSection.active').waitFor();
+ await page.getByRole('button',{name:'flurryの詳細を開く',exact:true}).tap();await page.locator('#p5WordDetailSection.active').waitFor({timeout:4000});
  assert.equal(await page.locator('#p5DetailTitle').textContent(),'flurry');
  const detail=await page.locator('#p5WordDetailSection').textContent();for(const s of ['にわか雪','There was a flurry','二行目 <script>','burst, rush','TOEIC','うろ覚え'])assert(detail.includes(s));
  assert.equal(await page.locator('#p5WordDetailSection script').count(),0);
  assert.deepEqual(await page.evaluate(()=>({words:localStorage.getItem('tangoCho2Words'),stats:localStorage.getItem('tangoCho2Part5Stats:v1')})),baseline);
  await page.locator('[data-section="listSection"]').click();assert(!(await page.locator('#p5WordDetailSection').isVisible()));
- await page.locator('[data-section="part5Section"]').click();await page.getByRole('button',{name:'flurryの詳細を開く',exact:true}).click();await page.locator('#p5DetailBack').click();assert(await page.locator('#p5Stats').isVisible());
+ await page.locator('[data-section="part5Section"]').click();await page.getByRole('button',{name:'flurryの詳細を開く',exact:true}).press('Enter');await page.locator('#p5DetailBack').click();assert(await page.locator('#p5Stats').isVisible());
  await page.getByRole('button',{name:'flurryの詳細を開く',exact:true}).click();await page.locator('#p5DetailEdit').click();assert.equal(await page.locator('#word').inputValue(),'flurry');assert.equal(await page.locator('#meaning').inputValue(),'にわか雪・慌ただしさ');
  assert.equal(await page.evaluate(()=>localStorage.getItem('tangoCho2Words')),baseline.words);
  console.log('PASS: keyboard/click weak-word navigation, full details with escaped text, back/tab navigation, existing editor and no automatic data changes');

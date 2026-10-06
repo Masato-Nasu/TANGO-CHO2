@@ -31,7 +31,15 @@
   function renderStats() { root.querySelector('#p5Stats').innerHTML = statsHtml(); }
 
   function openWordDetail(name) {
-    const detail = document.getElementById('p5WordDetailSection');
+    // A PWA may still have older HTML when this updated module is loaded.
+    let detail = document.getElementById('p5WordDetailSection');
+    if (!detail) {
+      detail = document.createElement('section');
+      detail.id = 'p5WordDetailSection';
+      detail.className = 'section';
+      detail.setAttribute('aria-label', '単語の詳細');
+      root.parentElement.appendChild(detail);
+    }
     const word = (typeof loadWords === 'function' ? loadWords() : []).find(w=>norm(w.word) === norm(name));
     const labels = {forgot:'覚えてない',fuzzy:'うろ覚え',default:'デフォルト',learned:'覚えた'};
     const field = (label,value) => `<h3>${label}</h3><p class="p5-detail-text">${esc(value || '未登録')}</p>`;
@@ -239,6 +247,12 @@
     root.querySelector('#p5Start').addEventListener('click', start);
     root.querySelector('#p5End').addEventListener('click', finish);
     document.querySelector('[data-section="part5Section"]').addEventListener('click', renderStats);
+    // Core tab navigation captured sections before a fallback detail page existed.
+    document.addEventListener('click', ev => {
+      if (ev.target.closest('.tab-button[data-section]')) {
+        document.getElementById('p5WordDetailSection')?.classList.remove('active');
+      }
+    }, true);
     root.addEventListener('click', ev => {
       const wordLink = ev.target.closest('[data-p5-word]');
       if (wordLink) { openWordDetail(wordLink.dataset.p5Word); return; }
