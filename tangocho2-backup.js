@@ -6,15 +6,14 @@
   const WORDS = 'tangoCho2Words';
   const PART5 = 'tangoCho2Part5Stats:v1';
   const STUDY = 'tangoCho2StudyHist';
-  const tracked = new Set([WORDS, PART5, STUDY, 'tangoChoWords', 'tangoChoStudyHist']);
-  let dbPromise, queue = Promise.resolve(), timer, suspended = false;
+  let dbPromise, queue = Promise.resolve();
   const parse = (key, fallback) => {
     const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : fallback;
   };
   function payload() {
     return {
-      app: 'TANGO-CHO2', backupVersion: 1, version: '0.10.0', exportedAt: new Date().toISOString(),
+      app: 'TANGO-CHO2', backupVersion: 1, version: '0.11.0', exportedAt: new Date().toISOString(),
       words: parse(WORDS, []),
       part5: parse(PART5, {words:{},sessions:[]}),
       studyHistory: parse(STUDY, [])
@@ -71,26 +70,8 @@
     return queue;
   }
   function snapshotNow(refreshTimestamp = false) {
-    clearTimeout(timer);
     try { return enqueue(payload(),refreshTimestamp); }
     catch (_) { message('自動バックアップのデータを読み取れませんでした。'); return Promise.resolve(); }
-  }
-
-  // Preserve a state before mutation and a settled state afterwards. No file download.
-  for (const method of ['setItem','removeItem']) {
-    const previous = Storage.prototype[method];
-    Storage.prototype[method] = function(key, ...args) {
-      const watch = this === window.localStorage && tracked.has(String(key)) && !suspended;
-      let before;
-      if (watch) { try { before = payload(); } catch (_) {} }
-      const result = previous.call(this,key,...args);
-      if (watch) {
-        if (before) enqueue(before);
-        clearTimeout(timer);
-        timer = setTimeout(snapshotNow,800);
-      }
-      return result;
-    };
   }
 
   async function refreshHistory() {
@@ -107,7 +88,7 @@
     }
     if (items.some(item => String(item.id) === selected)) select.value = selected;
     document.getElementById('tc2BackupRestore').disabled = items.length === 0;
-    message(`アプリを開くたびに更新します。端末内に直近${items.length}世代を保存しています（最大5世代）。`);
+    message(`アプリを開いたときに1回更新します。端末内に直近${items.length}世代を保存しています（最大5世代）。`);
   }
 
   function validate(data) {
@@ -174,15 +155,12 @@
     const text = `単語帳を${incoming.words.length}語に復元します。${incoming.part5 ? 'PART 5の成績も復元します。' : 'PART 5の成績は変更しません。'}現在のデータは自動バックアップに退避します。よろしいですか？`;
     if (!confirm(text + (correctionText ? '\n\n'+correctionText : ''))) return;
     // Ensure the current state really exists in history before replacing it.
-    clearTimeout(timer);
     await queue;
     await saveSnapshot(payload());
     const changes = [[WORDS,JSON.stringify(incoming.words)]];
     if (incoming.part5) changes.push([PART5,JSON.stringify(incoming.part5)]);
     if (incoming.studyHistory) changes.push([STUDY,JSON.stringify(incoming.studyHistory)]);
     const previous = changes.map(([key]) => [key,localStorage.getItem(key)]);
-    suspended = true;
-    clearTimeout(timer);
     try {
       for (const [key,value] of changes) localStorage.setItem(key,value);
     } catch (e) {
@@ -190,7 +168,7 @@
         try { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key,value); } catch (_) {}
       }
       throw new Error('復元できませんでした。元のデータとバックアップを保持しています。');
-    } finally { suspended = false; }
+    }
     await snapshotNow();
     location.reload();
   }
@@ -212,12 +190,8 @@
     catch (e) { message(e.message || 'JSONを読み込めませんでした。'); }
     finally { ev.target.value = ''; }
   },true);
-  window.addEventListener('pagehide',()=>snapshotNow());
-  window.addEventListener('pageshow',()=>snapshotNow(true));
-  document.addEventListener('visibilitychange',()=>{
-    if (document.visibilityState === 'visible') snapshotNow(true);
-  });
-  window.addEventListener('storage',ev => { if (tracked.has(ev.key)) snapshotNow(); });
+  // Initial pageshow also follows DOMContentLoaded; only BFCache returns need a new snapshot.
+  window.addEventListener('pageshow',ev => { if (ev.persisted) snapshotNow(true); });
   document.addEventListener('DOMContentLoaded',() => {
     const exportButton = document.getElementById('exportJsonBtn');
     const importButton = document.getElementById('importJsonBtn');

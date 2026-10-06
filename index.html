@@ -272,12 +272,12 @@
   <script src="tangocho2-fivewords.js?v=0.6.0"></script>
   <script src="tangocho2-auto-register.js?v=0.6.0"></script>
   <script src="tangocho2-part5.js?v=0.13.0"></script>
-  <script src="tangocho2-backup.js?v=0.10.0"></script>
+  <script src="tangocho2-backup.js?v=0.11.0"></script>
   <script src="tangocho2-spelling.js?v=0.7.1"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=0.15.0", { updateViaCache: 'none' })
+        navigator.serviceWorker.register("./service-worker.js?v=0.16.0", { updateViaCache: 'none' })
           .then(reg => reg.update()).catch(console.error);
       });
     }

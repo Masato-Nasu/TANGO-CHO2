@@ -15,12 +15,13 @@ const repo=path.resolve(__dirname,'..');
   localStorage.setItem('tangoChoOpenAiApiKey','test-only-placeholder-key');
  });
  await page.goto('http://127.0.0.1:8767/');await page.locator('#tc2BackupHistory option').first().waitFor({state:'attached'});
- await page.evaluate(()=>{
-  for(let i=1;i<=8;i++)saveWords([{id:String(i),word:'generation'+i,meaning:'世代'+i,status:i%2?'fuzzy':'forgot'}]);
-  localStorage.setItem('tangoCho2Part5Stats:v1',JSON.stringify({words:{generation8:{word:'generation8',attempts:2,correct:1,ms:1200}},sessions:[]}));
- });
- await page.waitForFunction(()=>document.querySelectorAll('#tc2BackupHistory option').length===5);
- await page.waitForTimeout(1000);
+ for(let i=1;i<=8;i++) {
+  await page.evaluate(i=>{
+   saveWords([{id:String(i),word:'generation'+i,meaning:'世代'+i,status:i%2?'fuzzy':'forgot'}]);
+   if(i===8)localStorage.setItem('tangoCho2Part5Stats:v1',JSON.stringify({words:{generation8:{word:'generation8',attempts:2,correct:1,ms:1200}},sessions:[]}));
+  },i);
+  await page.reload();await page.locator('#tc2BackupHistory option').first().waitFor({state:'attached'});
+ }
  const history=()=>page.evaluate(async()=>{
   const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('tangoCho2AutomaticBackups',1);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
   return await new Promise(resolve=>{const r=db.transaction('snapshots').objectStore('snapshots').getAll();r.onsuccess=()=>resolve(r.result);});
@@ -42,9 +43,17 @@ const repo=path.resolve(__dirname,'..');
  items=await history();assert(items.at(-1).savedAt>openedAt);assert.deepEqual(items.map(x=>x.id),initialHistory.map(x=>x.id));
  const shownAt=items.at(-1).savedAt;
  await page.waitForTimeout(20);await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));await page.waitForTimeout(100);
- items=await history();assert(items.at(-1).savedAt>shownAt);assert.equal(downloads,0);assert.equal(items.length,5);
+ items=await history();assert.equal(items.at(-1).savedAt,shownAt);
+ const beforeChanges=structuredClone(items);
+ await page.evaluate(()=>{
+  const words=loadWords();words[0].memo='開いている間の変更';saveWords(words);
+  window.dispatchEvent(new Event('storage'));window.dispatchEvent(new Event('pagehide'));window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:false}));
+ });
+ await page.waitForTimeout(1100);assert.deepEqual(await history(),beforeChanges);
+ await page.reload();await page.locator('#tc2BackupHistory option').first().waitFor({state:'attached'});
+ items=await history();assert.equal(items.at(-1).payload.words[0].memo,'開いている間の変更');assert.equal(downloads,0);assert.equal(items.length,5);
  assert(!JSON.stringify(items).includes('test-only-placeholder-key'));
- console.log('PASS: each app opening/restoration/resume refreshes the latest JSON snapshot without consuming generations or downloading files');
+ console.log('PASS: one snapshot per opening/BFCache return, no extra snapshots on writes/visibility/pagehide/initial pageshow, latest changes captured next opening');
 
  await page.locator('#connSettingsCard summary').click();
  const downloadPromise=page.waitForEvent('download');await page.locator('#exportJsonBtn').click();const download=await downloadPromise;
