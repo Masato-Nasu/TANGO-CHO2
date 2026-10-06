@@ -127,7 +127,7 @@
 
     const save = target.closest('#saveBtn');
     if (save) {
-      forceDefaultStatus();
+      if (!editingOriginalWord()) forceDefaultStatus();
       if (duplicateForCurrentWord()) {
         ev.preventDefault();
         ev.stopImmediatePropagation();

@@ -1480,137 +1480,176 @@ document.addEventListener("tangocho:incomingword", (ev) => {
   });
 
 
+  let savingWord = false;
   saveBtn.addEventListener("click", async () => {
+    if (savingWord) return;
     const w = wordEl.value.trim();
     const m = meaningEl.value.trim();
     if (!w) return setMsg("英単語が空です。", "err");
     if (!m) return setMsg("日本語訳が空です（翻訳 or 手入力してください）。", "err");
 
-    // POS candidates (WordNet-based; confirmed only)
-    const __posBase = await __inferPosCandidates(w);
+    savingWord = true;
+    saveBtn.disabled = true;
+    setMsg("保存中…", "");
+    try {
+      // Read loaded POS metadata without waiting for network; bootstrap adds it later.
+      const __posBase = __inferPosCandidatesSync(w);
 
-    const words = loadWords();
-    const now = nowIso();
+      let words = loadWords();
+      const now = nowIso();
 
-    // ===== Edit mode =====
-    let baseId = `${now}-${Math.random().toString(36).slice(2, 8)}`;
-    if (editId) {
-      const idx = words.findIndex((x) => x.id === editId);
-      if (idx >= 0) {
-        const prev = words[idx];
-        baseId = prev.id;
-        words[idx] = {
-          ...prev,
+      // ===== Edit mode =====
+      let baseId = `${now}-${Math.random().toString(36).slice(2, 8)}`;
+      if (editId) {
+        const idx = words.findIndex((x) => x.id === editId);
+        if (idx >= 0) {
+          const prev = words[idx];
+          baseId = prev.id;
+          words[idx] = {
+            ...prev,
+            word: w,
+            meaning: m,
+            status: statusEl.value || "default",
+            example: exampleEl.value.trim(),
+            memo: memoEl.value.trim(),
+            tags: tagsEl.value.trim(),
+            synonyms: synonymsEl ? synonymsEl.value.trim() : (prev.synonyms || ""),
+            updatedAt: now,
+            posCandidates: __posSets ? __posBase : (prev.posCandidates || []),
+          };
+        } else {
+          // If the item disappeared, fall back to adding as new.
+          editId = null;
+        }
+      }
+
+      // ===== Add new if not editing =====
+      if (!editId) {
+        words.push({
+          id: baseId,
           word: w,
           meaning: m,
           status: statusEl.value || "default",
           example: exampleEl.value.trim(),
           memo: memoEl.value.trim(),
           tags: tagsEl.value.trim(),
-          synonyms: synonymsEl ? synonymsEl.value.trim() : (prev.synonyms || ""),
-          updatedAt: now,
+          synonyms: synonymsEl ? synonymsEl.value.trim() : "",
+          source: "manual",
+          createdAt: now,
           posCandidates: __posBase,
-        };
+        });
+      }
+
+      // ===== Auto-add synonym cards (comma-separated) =====
+      const synRaw = (synonymsEl ? synonymsEl.value : "").trim();
+      const synTokens = synRaw
+        ? synRaw.split(/[,、\n\r]+/).map((s) => s.trim()).filter(Boolean)
+        : [];
+
+      const seen = new Set();
+      const baseLower = w.toLowerCase();
+      const existingWordLower = new Set(words.map((x) => String(x.word || "").toLowerCase()));
+      let synAdded = 0;
+      const synFailed = [];
+
+      const newSynonyms = [];
+      for (const t of synTokens) {
+        const tl = t.toLowerCase();
+        if (!t || tl === baseLower || seen.has(tl) || existingWordLower.has(tl)) continue;
+        seen.add(tl);
+        newSynonyms.push(t);
+      }
+
+      function showSavedWordLink() {
+        const savedLink = document.createElement("button");
+        savedLink.type = "button";
+        savedLink.id = "savedWordViewBtn";
+        savedLink.className = "ghost-btn";
+        savedLink.textContent = `「${w}」を単語帳で確認`;
+        savedLink.addEventListener("click", () => {
+          for (const [id, value] of [["statusFilter", "all"], ["tagFilter", "all"], ["sortOrder", "time"]]) {
+            const control = document.getElementById(id);
+            if (control) { control.value = value; control.dispatchEvent(new Event("change")); }
+          }
+          document.querySelector('[data-section="listSection"]').click();
+          const savedCard = [...document.querySelectorAll("#wordList .word-item")].find(item => item.dataset.wordId === String(baseId));
+          savedCard?.scrollIntoView({block:"center"});
+        });
+        document.getElementById("msg").appendChild(savedLink);
+      }
+
+      // Save the requested word before optional AI translation of extra synonym cards.
+      if (!saveWords(words)) return;
+      renderWordList();
+      const savedBase = words.find(item => item.id === baseId);
+      let synonymMeanings = {};
+      if (newSynonyms.length) {
+        try {
+          setMsg(`「${w}」を保存しました。類似語カード用に${newSynonyms.length}語を翻訳しています…`, "ok");
+          showSavedWordLink();
+          synonymMeanings = await translateTermsToJaViaAi(newSynonyms);
+        } catch (e) {
+          newSynonyms.forEach((t) => synFailed.push(t));
+        }
+      }
+
+      words = loadWords();
+      const latestWords = new Set(words.map(item => String(item.word || "").trim().toLowerCase()));
+      for (const t of newSynonyms) {
+        const tl = t.toLowerCase();
+        if (latestWords.has(tl)) continue;
+        const meaningSyn = String(synonymMeanings[tl] || "").trim();
+        if (!meaningSyn) {
+          if (!synFailed.includes(t)) synFailed.push(t);
+          continue;
+        }
+
+        // POS for synonym card (confirmed only)
+        const __posSyn = __inferPosCandidatesSync(t);
+
+        words.push({
+          id: `${baseId}-syn-${Math.random().toString(36).slice(2, 8)}`,
+          word: t,
+          meaning: meaningSyn,
+          status: savedBase.status || "default",
+          example: "",
+          memo: `同義語（${w}）`,
+          tags: savedBase.tags || "",
+          synonyms: "",
+          source: "synonym",
+          createdAt: nowIso(),
+          posCandidates: __posSyn,
+        });
+        existingWordLower.add(tl);
+        synAdded += 1;
+      }
+
+      const synFailNote = synFailed.length
+        ? `（類似語の再翻訳失敗: ${synFailed.slice(0, 3).join(", ")}${synFailed.length > 3 ? " 他" + (synFailed.length - 3) : ""}）`
+        : "";
+
+
+      if (synAdded && !saveWords(words)) return;
+
+      if (editId) {
+        exitEditMode(false);
+        setMsg(`更新しました（入力をクリアしました）。${synAdded ? ` 類似語カード +${synAdded}` : ""}${synFailNote}`.trim());
+        flashSaveIndicator(true);
       } else {
-        // If the item disappeared, fall back to adding as new.
-        editId = null;
-      }
-    }
-
-    // ===== Add new if not editing =====
-    if (!editId) {
-      words.push({
-        id: baseId,
-        word: w,
-        meaning: m,
-        status: statusEl.value || "default",
-        example: exampleEl.value.trim(),
-        memo: memoEl.value.trim(),
-        tags: tagsEl.value.trim(),
-        synonyms: synonymsEl ? synonymsEl.value.trim() : "",
-        source: "manual",
-        createdAt: now,
-        posCandidates: __posBase,
-      });
-    }
-
-    // ===== Auto-add synonym cards (comma-separated) =====
-    const synRaw = (synonymsEl ? synonymsEl.value : "").trim();
-    const synTokens = synRaw
-      ? synRaw.split(/[,、\n\r]+/).map((s) => s.trim()).filter(Boolean)
-      : [];
-
-    const seen = new Set();
-    const baseLower = w.toLowerCase();
-    const existingWordLower = new Set(words.map((x) => String(x.word || "").toLowerCase()));
-    let synAdded = 0;
-    const synFailed = [];
-
-    const newSynonyms = [];
-    for (const t of synTokens) {
-      const tl = t.toLowerCase();
-      if (!t || tl === baseLower || seen.has(tl) || existingWordLower.has(tl)) continue;
-      seen.add(tl);
-      newSynonyms.push(t);
-    }
-
-    let synonymMeanings = {};
-    if (newSynonyms.length) {
-      try {
-        setMsg(`類似語カード用に${newSynonyms.length}語をまとめて翻訳しています…`, "");
-        synonymMeanings = await translateTermsToJaViaAi(newSynonyms);
-      } catch (e) {
-        newSynonyms.forEach((t) => synFailed.push(t));
-      }
-    }
-
-    for (const t of newSynonyms) {
-      const tl = t.toLowerCase();
-      const meaningSyn = String(synonymMeanings[tl] || "").trim();
-      if (!meaningSyn) {
-        if (!synFailed.includes(t)) synFailed.push(t);
-        continue;
+        clearForm(true);
+        setMsg(`保存しました（入力をクリアしました）。${synAdded ? ` 類似語カード +${synAdded}` : ""}${synFailNote}`.trim(), "ok");
+        flashSaveIndicator(false);
       }
 
-      // POS for synonym card (confirmed only)
-      const __posSyn = await __inferPosCandidates(t);
-
-      words.push({
-        id: `${baseId}-syn-${Math.random().toString(36).slice(2, 8)}`,
-        word: t,
-        meaning: meaningSyn,
-        status: statusEl.value || "default",
-        example: "",
-        memo: `同義語（${w}）`,
-        tags: tagsEl.value.trim(),
-        synonyms: "",
-        source: "synonym",
-        createdAt: nowIso(),
-        posCandidates: __posSyn,
-      });
-      existingWordLower.add(tl);
-      synAdded += 1;
+      renderWordList();
+      showSavedWordLink();
+      wordEl.focus();
+    } catch (_) {
+      setMsg("保存できませんでした。入力内容は残しています。もう一度お試しください。", "err");
+    } finally {
+      savingWord = false;
+      saveBtn.disabled = false;
     }
-
-    const synFailNote = synFailed.length
-      ? `（類似語の再翻訳失敗: ${synFailed.slice(0, 3).join(", ")}${synFailed.length > 3 ? " 他" + (synFailed.length - 3) : ""}）`
-      : "";
-
-
-    saveWords(words);
-
-    if (editId) {
-      exitEditMode(false);
-      setMsg(`更新しました（入力をクリアしました）。${synAdded ? ` 類似語カード +${synAdded}` : ""}${synFailNote}`.trim());
-      flashSaveIndicator(true);
-} else {
-      clearForm(true);
-      setMsg(`保存しました（入力をクリアしました）。${synAdded ? ` 類似語カード +${synAdded}` : ""}${synFailNote}`.trim(), "ok");
-      flashSaveIndicator(false);
-}
-
-    renderWordList();
-    wordEl.focus();
   });
 }
 
@@ -1793,6 +1832,7 @@ listEl.innerHTML = "";
   for (const w of words) {
     const item = document.createElement("div");
     item.className = "word-item";
+    item.dataset.wordId = String(w.id);
 
     const top = document.createElement("div");
     top.className = "word-top";

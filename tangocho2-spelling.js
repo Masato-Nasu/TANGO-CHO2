@@ -45,7 +45,14 @@
   async function dictionary() {
     if (sets) return sets;
     if (!loading) loading = (async () => {
-      await __loadPosSets();
+      // Dictionary metadata is optional; a stalled connection must not block Save.
+      let timer;
+      try {
+        await Promise.race([
+          __loadPosSets(),
+          new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('辞書の読み込み待ちを終了しました。')), 3000); })
+        ]);
+      } finally { clearTimeout(timer); }
       const candidate = __posSets;
       if (!candidate || !candidate.n.size || !candidate.v.size) throw new Error('辞書を読み込めませんでした。');
       sets = candidate;

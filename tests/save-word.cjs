@@ -1,0 +1,34 @@
+const {chromium}=require('playwright');
+const assert=require('node:assert/strict'),fs=require('node:fs'),http=require('node:http'),path=require('node:path');
+const repo=path.resolve(__dirname,'..');
+(async()=>{
+ const server=http.createServer((req,res)=>{let name=new URL(req.url,'http://localhost').pathname;if(name.endsWith('/'))name+='index.html';const file=path.join(repo,name);try{res.setHeader('Content-Type',file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.html')?'text/html':'application/json');res.end(fs.readFileSync(file));}catch(_){res.writeHead(404);res.end();}});
+ await new Promise(r=>server.listen(8772,'127.0.0.1',r));
+ const browser=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE_PATH||undefined,args:['--no-sandbox','--disable-gpu','--no-zygote']});
+ const context=await browser.newContext({serviceWorkers:'block',hasTouch:true,viewport:{width:390,height:844}}),page=await context.newPage(),errors=[];
+ page.on('pageerror',e=>errors.push(e.message));await page.route('https://cdn.jsdelivr.net/**',r=>r.fulfill({body:''}));
+ await page.route('**/data/pos_*.txt',()=>new Promise(()=>{}));
+ await page.addInitScript(()=>{
+  if(!localStorage.getItem('tangoCho2Words'))localStorage.setItem('tangoCho2Words',JSON.stringify([{id:'flurry',word:'flurry',meaning:'にわか雪',status:'fuzzy',tags:'TOEIC',createdAt:'2020-01-01T00:00:00.000Z',posCandidates:['n']}]));
+ });
+ await page.goto('http://127.0.0.1:8772/');
+ await page.locator('[data-section="listSection"]').tap();await page.locator('#statusFilter').selectOption('forgot');await page.locator('#tagFilter').selectOption('TOEIC');await page.locator('[data-section="addSection"]').tap();
+ await page.locator('#word').fill('invoice');await page.locator('#meaning').fill('請求書');await page.locator('#saveBtn').tap();
+ await page.waitForFunction(()=>loadWords().some(w=>w.word==='invoice'),null,{timeout:5000});
+ await page.locator('#savedWordViewBtn').tap();assert.equal(await page.locator('#sortOrder').inputValue(),'time');assert.equal(await page.locator('#wordList .word-main').first().textContent(),'invoice');assert.equal(await page.locator('#statusFilter').inputValue(),'all');assert.equal(await page.locator('#tagFilter').inputValue(),'all');
+ await page.reload();assert.equal(await page.evaluate(()=>loadWords().find(w=>w.word==='invoice').meaning),'請求書');
+ console.log('PASS: mobile save with stalled dictionary, confirmation reveals saved word in chronological list through filters, data survives reload');
+ await page.evaluate(()=>startEdit('flurry'));await page.locator('#memo').fill('編集保存の確認');await page.locator('#saveBtn').tap();await page.waitForFunction(()=>loadWords().find(w=>w.id==='flurry')?.memo==='編集保存の確認');
+ assert.equal(await page.evaluate(()=>loadWords().find(w=>w.id==='flurry').status),'fuzzy');assert.equal(await page.evaluate(()=>loadWords().length),2);assert.deepEqual(await page.evaluate(()=>loadWords().find(w=>w.id==='flurry').posCandidates),['n']);assert.equal(await page.evaluate(()=>loadWords().find(w=>w.id==='flurry').createdAt),'2020-01-01T00:00:00.000Z');
+ await page.locator('#savedWordViewBtn').tap();assert(await page.locator('[data-word-id="flurry"]').isVisible());
+ console.log('PASS: existing word updates without duplicate, original learning status/date retained and confirmation opens the correct card');
+ await page.evaluate(()=>{startEdit('flurry');window.realSet=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){if(k==='tangoChoWords'||k==='tangoCho2Words')throw new DOMException('test quota','QuotaExceededError');return window.realSet.call(this,k,v);};});
+ await page.locator('#memo').fill('保存失敗時に残す入力');await page.locator('#saveBtn').tap();await page.waitForFunction(()=>document.getElementById('msg').textContent.includes('保存に失敗'));
+ assert.equal(await page.locator('#memo').inputValue(),'保存失敗時に残す入力');assert.equal(await page.evaluate(()=>loadWords().find(w=>w.id==='flurry').memo),'編集保存の確認');assert.equal(await page.locator('#savedWordViewBtn').count(),0);
+ await page.evaluate(()=>{Storage.prototype.setItem=window.realSet;document.getElementById('clearBtn').click();callOpenAiJson=()=>new Promise(resolve=>window.resolveSynonyms=resolve);});
+ await page.locator('#word').fill('delivery');await page.locator('#meaning').fill('配達');await page.locator('#synonyms').fill('shipment');await page.locator('#saveBtn').tap();
+ await page.waitForFunction(()=>loadWords().some(w=>w.word==='delivery'),null,{timeout:5000});assert((await page.locator('#msg').textContent()).includes('保存しました'));await page.locator('#savedWordViewBtn').tap();assert.equal(await page.locator('#wordList .word-main').first().textContent(),'delivery');
+ await page.evaluate(()=>window.resolveSynonyms({items:[{term:'shipment',meaning:'発送'}]}));await page.waitForFunction(()=>loadWords().some(w=>w.word==='shipment'));assert.equal(await page.evaluate(()=>loadWords().find(w=>w.word==='flurry').status),'fuzzy');
+ assert.deepEqual(errors,[]);console.log('PASS: failed writes retain input and never report success; main word persists before AI synonym response and synonym cards still register');
+ await browser.close();server.close();
+})().catch(e=>{console.error(e);process.exit(1)});
