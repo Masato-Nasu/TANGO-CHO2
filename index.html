@@ -172,6 +172,10 @@
 </div>
         </div>
 
+        <label class="field-label" for="wordSearch">英単語を検索</label>
+        <input id="wordSearch" type="text" role="searchbox" placeholder="例：flurry / flu" lang="en" autocapitalize="none" autocomplete="off" spellcheck="false" aria-describedby="wordSearchResult">
+        <p id="wordSearchResult" class="note" role="status" hidden></p>
+
         <div id="listCounts" class="list-counts"></div>
 
         <div id="listMsg" class="msg"></div>
@@ -263,7 +267,7 @@
   <script src="bank_enja.js"></script>
   <script src="vocab_pool.js"></script>
   <script src="tangocho2-storage-shim.js?v=0.1.0"></script>
-  <script src="script.js?v=48.0.4"></script>
+  <script src="script.js?v=48.0.5"></script>
   <script src="api-response-fix.js?v=48.0.6"></script>
   <script src="tangocho2-fivewords.js?v=0.5.1"></script>
   <script src="tangocho2-auto-register.js?v=0.5.0"></script>
@@ -273,7 +277,7 @@
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=0.13.0", { updateViaCache: 'none' })
+        navigator.serviceWorker.register("./service-worker.js?v=0.14.0", { updateViaCache: 'none' })
           .then(reg => reg.update()).catch(console.error);
       });
     }

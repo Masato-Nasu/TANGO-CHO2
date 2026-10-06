@@ -1567,6 +1567,8 @@ document.addEventListener("tangocho:incomingword", (ev) => {
         savedLink.className = "ghost-btn";
         savedLink.textContent = `「${w}」を単語帳で確認`;
         savedLink.addEventListener("click", () => {
+          const search = document.getElementById("wordSearch");
+          if (search) search.value = "";
           for (const [id, value] of [["statusFilter", "all"], ["tagFilter", "all"], ["sortOrder", "time"]]) {
             const control = document.getElementById(id);
             if (control) { control.value = value; control.dispatchEvent(new Event("change")); }
@@ -1822,6 +1824,13 @@ let words = [...baseWords];
     words.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
   }
   if (filter !== "all") words = words.filter((w) => (w.status || "default") === filter);
+  const query = String(document.getElementById("wordSearch")?.value || "").trim().toLowerCase();
+  if (query) words = words.filter(w => String(w.word || "").toLowerCase().includes(query));
+  const searchResult = document.getElementById("wordSearchResult");
+  if (searchResult) {
+    searchResult.hidden = !query;
+    searchResult.textContent = query ? `検索結果：${words.length}語` : "";
+  }
 listEl.innerHTML = "";
 
   if (words.length === 0) {
@@ -2541,6 +2550,7 @@ document.addEventListener("DOMContentLoaded", () => {
   applyIncomingWordToAddForm();
   setupFilter();
   setupSort();
+  document.getElementById("wordSearch")?.addEventListener("input", renderWordList);
   setupTagFilter();
   setupExport();
   setupImport();

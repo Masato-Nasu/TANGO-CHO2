@@ -122,7 +122,7 @@ async function complete(page,count,wrongFirst=false) {
  await p.evaluate(async()=>{localStorage.setItem('tangoCho2Words',JSON.stringify([{id:'pwa',word:'care',meaning:'注意',status:'fuzzy'}]));await caches.open('tango-cho-cache-original');});
  for(const file of ['index.html','service-worker.js','script.js','tangocho2-behavior.js','api-response-fix.js','tangocho2-fivewords.js','tangocho2-auto-register.js','tangocho2-progress.js','tangocho2-layout-fix.css','tangocho2-part5.js','tangocho2-backup.js','tangocho2-spelling.js']) fs.copyFileSync(`${repo}/${file}`,`${upgradeDir}/${file}`);
  await p.reload();
- await p.waitForFunction(async()=> (await caches.keys()).includes('tango-cho2-cache-v0.13.0') && !(await caches.keys()).includes('tango-cho2-cache-v0.4.0'),{timeout:90000});
+ await p.waitForFunction(async()=> (await caches.keys()).includes('tango-cho2-cache-v0.14.0') && !(await caches.keys()).includes('tango-cho2-cache-v0.4.0'),{timeout:90000});
  assert((await p.evaluate(()=>caches.keys())).includes('tango-cho-cache-original'));
  await p.locator('[data-section="part5Section"]').click();
  assert(await p.locator('#p5Start').isVisible());
@@ -131,7 +131,7 @@ async function complete(page,count,wrongFirst=false) {
  await p.reload(); await p.locator('#p5Mode').waitFor({state:'attached'});
  await p.locator('[data-section="part5Section"]').click();
  assert(await p.locator('#p5Start').isVisible());
- await p.locator('[data-section="addSection"]').click();await p.locator('#word').fill('invoice');await p.locator('#meaning').fill('請求書');await p.locator('#saveBtn').click();await p.waitForFunction(()=>loadWords().some(w=>w.word==='invoice'));await p.locator('#savedWordViewBtn').click();assert.equal(await p.locator('#wordList .word-main').first().textContent(),'invoice');await p.reload();assert.equal(await p.evaluate(()=>loadWords().find(w=>w.word==='invoice').meaning),'請求書');
+ await p.locator('[data-section="addSection"]').click();await p.locator('#word').fill('invoice');await p.locator('#meaning').fill('請求書');await p.locator('#saveBtn').click();await p.waitForFunction(()=>loadWords().some(w=>w.word==='invoice'));await p.locator('#savedWordViewBtn').click();assert.equal(await p.locator('#wordList .word-main').first().textContent(),'invoice');await p.locator('#wordSearch').fill('INV');assert.equal(await p.locator('#wordList .word-main').count(),1);assert.equal(await p.locator('#wordList .word-main').textContent(),'invoice');await p.reload();assert.equal(await p.evaluate(()=>loadWords().find(w=>w.word==='invoice').meaning),'請求書');
  console.log('PASS: old PWA cache upgraded, only TC2 old caches removed, data preserved, new tab available offline');
  await browser.close();
  servers.forEach(s=>s.close());
