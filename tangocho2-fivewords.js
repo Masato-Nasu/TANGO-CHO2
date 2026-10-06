@@ -188,7 +188,7 @@
                 <span class="tc2-word-top"><strong>${esc(w.word)}</strong><span>${esc(w.pos)}</span></span>
                 <span class="tc2-meaning">${esc(w.meaning)}</span>
                 <span class="tc2-note">${esc(w.note)}</span>
-                <span class="tc2-pick">${isRegistered ? '登録済み' : 'TANGO-CHOへ拾う →'}</span>
+                <span class="tc2-pick">${isRegistered ? '登録済み' : '単語帳へ移す →'}</span>
               </button>`;
           }).join('')}
         </div>
@@ -311,7 +311,7 @@
         result.dataset.setId = lesson.setId;
         renderLesson(result, lesson);
         btn.textContent = '5語を再生成';
-        status.textContent = '🔊で発音を確認してから、必要な単語を単語帳へ拾えます。';
+        status.textContent = '🔊で発音を確認してから、必要な語を選び、追加画面で「単語帳に保存」を押してください。';
       } catch (e) {
         console.error(e);
         status.textContent = e?.message || '生成に失敗しました。';

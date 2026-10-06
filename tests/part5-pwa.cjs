@@ -12,7 +12,7 @@ async function mockAI(page) {
    callOpenAiJson = async ({instruction,input}) => {
      if (instruction.includes('five-word')) {
        const n = ++window.lessonCounter;
-       return {words:['inquiry','deadline','shipment','invoice','proposal'].map(w=>({word:w+(n>1?n:''),meaning:'意味',pos:'noun',note:'メモ'})),sentence:'An inquiry concerns the deadline, shipment, invoice and proposal.',translation:'翻訳'};
+       return {words:['inquiry','deadline','shipment','invoice','proposal'].map(w=>({word:n>1?({inquiry:'inquiries',deadline:'deadlines',shipment:'shipments',invoice:'invoices',proposal:'proposals'}[w]):w,meaning:'意味',pos:'noun',note:'メモ'})),sentence:'An inquiry concerns the deadline, shipment, invoice and proposal.',translation:'翻訳'};
      }
      const requests = JSON.parse(input);
      window.testRequests.push(...requests);
@@ -80,17 +80,31 @@ async function complete(page,count,wrongFirst=false) {
  console.log('PASS: VOCAB/WORD FORM/MIX, 5/10/30 questions, weak priority, accuracy/timing/history, statuses unchanged');
  await page.locator('[data-section="fortuneSection"]').click();
  await page.locator('#tc2FiveGenerate').click();
- await page.waitForFunction(()=>loadWords().some(w=>w.word==='inquiry'));
+ await page.waitForFunction(()=>document.querySelectorAll('#tc2FiveResult .tc2-word').length===5);
+ await page.waitForTimeout(300);
+ assert.equal(await page.evaluate(()=>localStorage.getItem('tangoCho2Words')),baseline);
  await page.locator('#tc2FiveGenerate').click();
- await page.waitForFunction(()=>loadWords().some(w=>w.word==='inquiry2'));
- assert.equal(await page.evaluate(()=>loadWords().length),22);
+ await page.waitForFunction(()=>document.querySelector('#tc2FiveResult strong')?.textContent==='inquiries');
+ await page.waitForTimeout(300);
+ assert.equal(await page.evaluate(()=>loadWords().length),12);
  assert.equal(await page.evaluate(()=>Object.keys(localStorage).filter(k=>k.startsWith('tangoCho2FiveWordsSet:v2:')).length),2);
- assert.equal(await page.evaluate(()=>JSON.parse(Storage.prototype.getItem.call(localStorage,'tangoCho2Words')).length),22);
- // Delete a generated word through the same storage method as core and reload.
- await page.evaluate(()=>saveWords(loadWords().filter(w=>w.word!=='inquiry2')));
+ await page.locator('#tc2FiveResult .tc2-word').first().click();
+ await page.waitForFunction(()=>document.getElementById('meaning').value==='意味');
+ assert.equal(await page.locator('#word').inputValue(),'inquiries');
+ assert.equal(await page.evaluate(()=>loadWords().length),12);
+ await page.locator('#saveBtn').click();
+ await page.waitForFunction(()=>loadWords().some(w=>w.word==='inquiries'));
+ assert.equal(await page.evaluate(()=>loadWords().length),13);
+ assert.equal(await page.evaluate(()=>loadWords().find(w=>w.word==='inquiries').tags),'5WORDS');
+ assert.equal(await page.evaluate(()=>loadWords().find(w=>w.word==='inquiries').example),'An inquiry concerns the deadline, shipment, invoice and proposal.');
+ await page.locator('[data-section="fortuneSection"]').click();
+ await page.waitForFunction(()=>document.querySelector('#tc2FiveResult .tc2-word').dataset.registered==='1');
+ // Deleting a manually registered word must not re-register it on reload.
+ await page.evaluate(()=>saveWords(loadWords().filter(w=>w.word!=='inquiries')));
  await page.reload(); await page.locator('#tc2FiveGenerate').waitFor({state:'attached'});
  await page.waitForTimeout(500);
- assert.equal(await page.evaluate(()=>loadWords().some(w=>w.word==='inquiry2')),false);
+ assert.equal(await page.evaluate(()=>loadWords().some(w=>w.word==='inquiries')),false);
+ assert.equal(await page.locator('#tc2FiveResult .tc2-word[data-registered="1"]').count(),0);
  // Native Storage mapping never touches original vocabulary.
  assert.equal(await page.evaluate(()=>JSON.parse(Object.getOwnPropertyDescriptor(Storage.prototype,'getItem').value.call(sessionStorage,'none')||'null')),null);
  const original=await page.evaluate(()=>Object.entries(localStorage).find(([k])=>k==='tangoChoWords')[1]);
@@ -111,7 +125,7 @@ async function complete(page,count,wrongFirst=false) {
  await page.locator('#saveBtn').click();
  await page.waitForFunction(()=>loadWords().some(w=>w.word==='regression' && w.meaning==='回帰'));
  console.log('PASS: existing vocabulary list, add/save and ordinary four-choice quiz');
- console.log('PASS: repeat 5 WORDS generation on same date, automatic registration, deletion respected, original storage intact, mobile layout');
+ console.log('PASS: repeat 5 WORDS generation on same date, manual registration only after Save, deletion respected, original storage intact, mobile layout');
  await context.close();
  // Install old Service Worker, then update assets at the same origin.
  const upgrade=await browser.newContext({viewport:{width:390,height:844}});
@@ -122,7 +136,7 @@ async function complete(page,count,wrongFirst=false) {
  await p.evaluate(async()=>{localStorage.setItem('tangoCho2Words',JSON.stringify([{id:'pwa',word:'care',meaning:'注意',status:'fuzzy'}]));await caches.open('tango-cho-cache-original');});
  for(const file of ['index.html','service-worker.js','script.js','tangocho2-behavior.js','api-response-fix.js','tangocho2-fivewords.js','tangocho2-auto-register.js','tangocho2-progress.js','tangocho2-layout-fix.css','tangocho2-part5.js','tangocho2-backup.js','tangocho2-spelling.js']) fs.copyFileSync(`${repo}/${file}`,`${upgradeDir}/${file}`);
  await p.reload();
- await p.waitForFunction(async()=> (await caches.keys()).includes('tango-cho2-cache-v0.14.1') && !(await caches.keys()).includes('tango-cho2-cache-v0.4.0'),{timeout:90000});
+ await p.waitForFunction(async()=> (await caches.keys()).includes('tango-cho2-cache-v0.15.0') && !(await caches.keys()).includes('tango-cho2-cache-v0.4.0'),{timeout:90000});
  assert((await p.evaluate(()=>caches.keys())).includes('tango-cho-cache-original'));
  await p.locator('[data-section="part5Section"]').click();
  assert(await p.locator('#p5Start').isVisible());
