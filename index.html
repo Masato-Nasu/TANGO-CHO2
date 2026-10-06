@@ -173,7 +173,7 @@
         </div>
 
         <label class="field-label" for="wordSearch">英単語を検索</label>
-        <input id="wordSearch" type="text" role="searchbox" placeholder="例：flurry / flu" lang="en" autocapitalize="none" autocomplete="off" spellcheck="false" aria-describedby="wordSearchResult">
+        <input id="wordSearch" type="text" role="searchbox" lang="en" autocapitalize="none" autocomplete="off" spellcheck="false" aria-describedby="wordSearchResult">
         <p id="wordSearchResult" class="note" role="status" hidden></p>
 
         <div id="listCounts" class="list-counts"></div>
@@ -277,7 +277,7 @@
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=0.14.0", { updateViaCache: 'none' })
+        navigator.serviceWorker.register("./service-worker.js?v=0.14.1", { updateViaCache: 'none' })
           .then(reg => reg.update()).catch(console.error);
       });
     }
