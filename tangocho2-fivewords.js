@@ -20,7 +20,7 @@
       [
         './tangocho2-example-sync.js?v=0.4.0',
         './tangocho2-behavior.js?v=0.3.1',
-        './tangocho2-progress.js?v=0.6.0'
+        './tangocho2-progress.js?v=0.7.0'
       ].forEach(src => {
         if (document.querySelector(`script[data-tc2-extra="${src}"]`)) return;
         const script = document.createElement('script');
@@ -42,7 +42,8 @@
     jhs: 'Japanese junior-high learner level. Prefer high-frequency, broadly useful words, but do not choose words that are too elementary.',
     hs: 'Japanese high-school to university-entrance level. Prefer useful reading vocabulary, abstract words, and common academic vocabulary.',
     adult: 'Advanced adult Japanese learner level. Prefer useful but not obscure words seen in journalism, business, essays, and general nonfiction.',
-    toeic800: 'TOEIC Listening and Reading preparation for a learner scoring 800+ and targeting 900+. Use only the supplied target words in practical workplace or everyday business senses. Explain useful collocations and word families in the notes.'
+    toeic800: 'TOEIC Listening and Reading preparation for a learner scoring 800+ and targeting 900+. Use only the supplied target words in practical workplace or everyday business senses. Explain useful collocations and word families in the notes.',
+    toeic900: 'TOEIC Listening and Reading preparation for a learner targeting 900+. Use only the supplied advanced business target words. Focus on precise workplace senses, common collocations, near-synonym distinctions and word forms in the Japanese notes. Avoid specialist jargon and literary senses.'
   };
 
   // Independently curated practice vocabulary, not an ETS frequency ranking.
@@ -61,20 +62,36 @@
     'substantial considerable significant sufficient adequate appropriate relevant applicable feasible tentative preliminary subsequent consecutive periodic annual quarterly promptly accordingly mutually'
   ].map(group => group.split(' '));
 
-  function toeicTargets(existing) {
+  const TOEIC_900_GROUPS = [
+    'remuneration disbursement appropriation allocation reimbursement insolvency depreciation liquidity profitability proceeds receivable payable outstanding overdue accrued contingent',
+    'ratification amendment concession arbitration mediation litigation infringement indemnity confidentiality exclusivity enforceable contractual prerequisite exemption entitlement notwithstanding',
+    'competency aptitude accreditation tenure succession retention attrition absenteeism delegation discretion diligence integrity initiative accountability versatility adaptability',
+    'discrepancy fluctuation projection benchmark feasibility viability contingency constraint magnitude implication indication correlation proportion threshold rationale criterion',
+    'consolidation acquisition merger subsidiary conglomerate consortium affiliate stakeholder shareholder entrepreneur proprietor incumbent counterpart intermediary liaison beneficiary',
+    'demonstrate substantiate corroborate ascertain scrutinize assess appraise gauge quantify distinguish differentiate specify stipulate delineate elaborate reiterate',
+    'streamline optimize augment enhance bolster reinforce cultivate spearhead implement institute enact enforce mitigate alleviate expedite rectify',
+    'solicit elicit confer convene deliberate endorse ratify rescind revoke relinquish forfeit reimburse offset absorb allocate apportion',
+    'lucrative stringent rigorous meticulous comprehensive exhaustive intricate explicit implicit ambiguous unequivocal pertinent instrumental indispensable conducive detrimental',
+    'inherent integral incumbent discretionary provisional impending foreseeable unprecedented sustained prevalent susceptible compatible consistent cohesive respective simultaneous',
+    'deterioration disruption infringement malfunction obstruction congestion depletion attrition redundancy obsolescence conservation restoration refurbishment sustainability precaution safeguard',
+    'concurrently consecutively subsequently respectively predominantly substantially marginally comparatively considerably exceptionally exclusively provisionally inadvertently duly otherwise thereby'
+  ].map(group => [...new Set(group.split(' '))].filter(word => !TOEIC_GROUPS.some(base => base.includes(word))));
+
+  function toeicTargets(existing, level) {
     const registered = new Set(existing);
     const seen = new Set();
     for (const key of Object.keys(localStorage)) {
       if (!key.startsWith(LESSON_PREFIX)) continue;
       try {
         const lesson = JSON.parse(localStorage.getItem(key));
-        if (lesson?.level === 'toeic800') (lesson.words || []).forEach(w => seen.add(String(w.word).toLowerCase()));
+        if (lesson?.level === level) (lesson.words || []).forEach(w => seen.add(String(w.word).toLowerCase()));
       } catch (_) {}
     }
-    const groups = TOEIC_GROUPS.map(group => group.filter(w => !registered.has(w)));
+    const pool = level === 'toeic900' ? TOEIC_900_GROUPS : TOEIC_GROUPS;
+    const groups = pool.map(group => group.filter(w => !registered.has(w)));
     const fresh = groups.map(group => group.filter(w => !seen.has(w)));
     const all = [...new Set(groups.flat())];
-    if (all.length < 5) throw new Error('TOEIC 800+の対象語は、未登録が5語未満です。単語帳やPART 5で復習できます。');
+    if (all.length < 5) throw new Error(`${level === 'toeic900' ? 'TOEIC 900+' : 'TOEIC 800+'}の対象語は、未登録が5語未満です。単語帳やPART 5で復習できます。`);
     const freshAll = [...new Set(fresh.flat())];
     const candidates = freshAll.length >= 5 ? fresh : groups;
     const coherent = candidates.filter(group => group.length >= 5);
@@ -156,7 +173,7 @@
     }
 
     const existing = [...new Set(currentVocabulary().map(w => w.toLowerCase()))];
-    const targets = level === 'toeic800' ? toeicTargets(existing) : null;
+    const targets = ['toeic800', 'toeic900'].includes(level) ? toeicTargets(existing, level) : null;
     const avoid = existing.slice(-3000).join(', ') || '(none)';
 
     const instruction = [
@@ -314,11 +331,12 @@
               <option value="hs">高校・大学受験</option>
               <option value="adult">大人（一般）</option>
               <option value="toeic800">TOEIC 800+（対象語を限定）</option>
+              <option value="toeic900">TOEIC 900+（発展語を限定）</option>
             </select>
           </label>
           <button id="tc2FiveGenerate" class="primary-btn" type="button">5語を生成</button>
         </div>
-        <div class="tc2-sub">TOEIC 800+はビジネス・日常場面の対象リストから未登録の5語を選びます。一般向けはAIが選びます。回数制限はありません。</div>
+        <div class="tc2-sub">TOEIC 800+は基本・応用語、900+はより高度なビジネス語の対象リストから未登録の5語を選びます。一般向けはAIが選びます。回数制限はありません。</div>
         <div id="tc2FiveStatus" class="tc2-status" aria-live="polite"></div>
       </div>
 

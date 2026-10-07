@@ -9,7 +9,8 @@
     jhs: '中学生',
     hs: '高校・大学受験',
     adult: '大人（一般）',
-    toeic800: 'TOEIC 800+'
+    toeic800: 'TOEIC 800+',
+    toeic900: 'TOEIC 900+'
   };
 
   function currentLevel() {
