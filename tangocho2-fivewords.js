@@ -100,7 +100,7 @@
     const groups = pool.map(group => group.filter(w => !registered.has(w)));
     const fresh = groups.map(group => group.filter(w => !seen.has(w)));
     const all = [...new Set(groups.flat())];
-    if (all.length < 5) throw new Error(`${level === 'toeic900' ? 'TOEIC 900+' : 'TOEIC 800+'}の対象語は、未登録が5語未満です。単語帳やPART 5で復習できます。`);
+    if (all.length < 5) throw new Error(`${level === 'toeic900' ? 'TOEIC 900+' : 'TOEIC 800+'}で選べる未登録の単語が5語未満です。単語帳やPART 5で復習できます。`);
     const freshAll = [...new Set(fresh.flat())];
     const candidates = freshAll.length >= 5 ? fresh : groups;
     const coherent = candidates.filter(group => group.length >= 5);
@@ -353,13 +353,13 @@
               <option value="jhs">中学生向き</option>
               <option value="hs">高校・大学受験</option>
               <option value="adult">大人（一般）</option>
-              <option value="toeic800">TOEIC 800+（対象語を限定）</option>
-              <option value="toeic900">TOEIC 900+（発展語を限定）</option>
+              <option value="toeic800">TOEIC 800+</option>
+              <option value="toeic900">TOEIC 900+</option>
             </select>
           </label>
           <button id="tc2FiveGenerate" class="primary-btn" type="button">5語を生成</button>
         </div>
-        <div class="tc2-sub">TOEIC 800+は基本・応用語、900+は発展語の対象リストから未登録の5語を選びます。旅行・買い物・飲食・文化・地域の話題も含みます。一般向けはAIが選びます。回数制限はありません。</div>
+        <div class="tc2-sub">TOEICでは、仕事・旅行・買い物・飲食・文化・地域などの単語を選びます。900+は800+より難しめです。何度でも生成できます。</div>
         <div id="tc2FiveStatus" class="tc2-status" aria-live="polite"></div>
       </div>
 
