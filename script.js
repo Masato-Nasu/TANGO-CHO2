@@ -1657,6 +1657,7 @@ document.addEventListener("tangocho:incomingword", (ev) => {
       renderWordList();
       showSavedWordLink();
       wordEl.focus();
+      document.dispatchEvent(new CustomEvent("tangocho:wordsaved", { detail: { word: w, id: baseId } }));
     } catch (_) {
       setMsg("保存できませんでした。入力内容は残しています。もう一度お試しください。", "err");
     } finally {

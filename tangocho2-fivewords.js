@@ -42,8 +42,8 @@
     jhs: 'Japanese junior-high learner level. Prefer high-frequency, broadly useful words, but do not choose words that are too elementary.',
     hs: 'Japanese high-school to university-entrance level. Prefer useful reading vocabulary, abstract words, and common academic vocabulary.',
     adult: 'Advanced adult Japanese learner level. Prefer useful but not obscure words seen in journalism, business, essays, and general nonfiction.',
-    toeic800: 'TOEIC Listening and Reading preparation for a learner scoring 800+ and targeting 900+. Use only the supplied target words in practical workplace or everyday business senses. Explain useful collocations and word families in the notes.',
-    toeic900: 'TOEIC Listening and Reading preparation for a learner targeting 900+. Use only the supplied advanced business target words. Focus on precise workplace senses, common collocations, near-synonym distinctions and word forms in the Japanese notes. Avoid specialist jargon and literary senses.'
+    toeic800: 'TOEIC Listening and Reading preparation for a learner scoring 800+ and targeting 900+. Use only the supplied target words in practical workplace, travel, shopping, dining, leisure and community senses. Explain useful collocations and word families in the notes.',
+    toeic900: 'TOEIC Listening and Reading preparation for a learner targeting 900+. Use only the supplied advanced TOEIC-style target words. Focus on precise senses in workplace, travel, retail, dining, cultural events and community contexts, common collocations, near-synonym distinctions and word forms in the Japanese notes. Avoid specialist jargon and literary senses.'
   };
 
   // Independently curated practice vocabulary, not an ETS frequency ranking.
@@ -59,8 +59,13 @@
     'assessment evaluation performance efficiency productivity objective initiative strategy implementation procedure policy regulation guideline requirement priority progress accomplishment improvement monitoring',
     'amend revise approve authorize designate allocate delegate oversee undertake conduct facilitate coordinate collaborate consolidate retain acquire obtain ensure verify',
     'anticipate accommodate comply adhere submit fulfill resolve rectify reimburse incur waive withdraw postpone resume suspend discontinue notify acknowledge clarify',
-    'substantial considerable significant sufficient adequate appropriate relevant applicable feasible tentative preliminary subsequent consecutive periodic annual quarterly promptly accordingly mutually'
-  ].map(group => group.split(' '));
+    'substantial considerable significant sufficient adequate appropriate relevant applicable feasible tentative preliminary subsequent consecutive periodic annual quarterly promptly accordingly mutually',
+    'departure arrival boarding terminal passenger luggage baggage fare destination transit connection cancellation delay timetable excursion sightseeing',
+    'cuisine ingredient appetizer entree dessert beverage buffet serving portion dietary allergy vegetarian catering menu beverage hospitality',
+    'exhibition exhibit gallery museum admission performance audience orchestra rehearsal intermission festival attraction guided souvenir sculpture portrait',
+    'neighborhood resident community volunteer donation charity fundraiser recycling disposal collection pedestrian pavement intersection traffic detour route',
+    'purchase exchange bargain coupon voucher checkout fitting alteration garment fabric footwear clearance groceries perishable expiration freshness'
+  ].map(group => [...new Set(group.split(' '))]);
 
   const TOEIC_900_GROUPS = [
     'remuneration disbursement appropriation allocation reimbursement insolvency depreciation liquidity profitability proceeds receivable payable outstanding overdue accrued contingent',
@@ -74,7 +79,11 @@
     'lucrative stringent rigorous meticulous comprehensive exhaustive intricate explicit implicit ambiguous unequivocal pertinent instrumental indispensable conducive detrimental',
     'inherent integral incumbent discretionary provisional impending foreseeable unprecedented sustained prevalent susceptible compatible consistent cohesive respective simultaneous',
     'deterioration disruption infringement malfunction obstruction congestion depletion attrition redundancy obsolescence conservation restoration refurbishment sustainability precaution safeguard',
-    'concurrently consecutively subsequently respectively predominantly substantially marginally comparatively considerably exceptionally exclusively provisionally inadvertently duly otherwise thereby'
+    'concurrently consecutively subsequently respectively predominantly substantially marginally comparatively considerably exceptionally exclusively provisionally inadvertently duly otherwise thereby',
+    'layover stopover embark disembark embarkation departure concourse reroute turbulence complimentary amenities concierge secluded scenic picturesque panoramic',
+    'culinary palatable delectable savory assortment delicacy gourmet cuisine locally seasonal organic sustainable replenishment consumption redeem redemption',
+    'curator artifact exhibit retrospective inaugural commemorative acclaimed renowned distinguished captivating intricate craftsmanship preservation heritage restoration patronage',
+    'municipal ordinance conservation habitat biodiversity erosion contamination sanitation congestion curbside curb accessibility revitalization restoration recreational vicinity'
   ].map(group => [...new Set(group.split(' '))].filter(word => !TOEIC_GROUPS.some(base => base.includes(word))));
 
   function toeicTargets(existing, level) {
@@ -192,7 +201,7 @@
       `Level: ${level}`,
       `Level guidance: ${levelGuidance[level]}`,
       `Existing vocabulary to avoid: ${avoid}`,
-      ...(targets ? [`Mandatory target words: ${targets.join(', ')}. Return exactly these five words, spelled exactly as supplied. Do not substitute, inflect, or add target words. Use a natural TOEIC-style workplace sentence.`] : [])
+      ...(targets ? [`Mandatory target words: ${targets.join(', ')}. Return exactly these five words, spelled exactly as supplied. Do not substitute, inflect, or add target words. Use a natural TOEIC-style sentence in the context most natural for these words (workplace, travel, shopping, dining, culture or community).`] : [])
     ].join('\n');
 
     let result;
@@ -214,10 +223,24 @@
     return result;
   }
 
+  let returnAfterSave = false;
+  document.addEventListener('tangocho:incomingword', () => { returnAfterSave = false; });
+  document.addEventListener('click', event => {
+    if (event.target.closest('.tab-button, #clearBtn, #cancelEditBtn, #randomBtn')) returnAfterSave = false;
+  }, true);
+  document.addEventListener('tangocho:wordsaved', event => {
+    if (!returnAfterSave) return;
+    returnAfterSave = false;
+    document.querySelector('[data-section="fortuneSection"]')?.click();
+    const status = document.getElementById('tc2FiveStatus');
+    if (status) status.textContent = `「${event.detail.word}」を単語帳に保存しました。`;
+  });
+
   function pickIntoTangoCho(item, lesson) {
     try {
       if (typeof sendWordToAdd === 'function') sendWordToAdd(item.word);
       else throw new Error('追加画面へ送れませんでした。');
+      returnAfterSave = true;
 
       requestAnimationFrame(() => {
         const meaning = document.getElementById('meaning');
@@ -336,7 +359,7 @@
           </label>
           <button id="tc2FiveGenerate" class="primary-btn" type="button">5語を生成</button>
         </div>
-        <div class="tc2-sub">TOEIC 800+は基本・応用語、900+はより高度なビジネス語の対象リストから未登録の5語を選びます。一般向けはAIが選びます。回数制限はありません。</div>
+        <div class="tc2-sub">TOEIC 800+は基本・応用語、900+は発展語の対象リストから未登録の5語を選びます。旅行・買い物・飲食・文化・地域の話題も含みます。一般向けはAIが選びます。回数制限はありません。</div>
         <div id="tc2FiveStatus" class="tc2-status" aria-live="polite"></div>
       </div>
 
