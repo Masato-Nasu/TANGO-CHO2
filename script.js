@@ -440,6 +440,7 @@ function sanitizeImportedWords(arr) {
       meaning: m,
       status: normalizeStatus(x.status),
       example: x.example ? String(x.example) : "",
+      exampleTranslation: x.exampleTranslation ? String(x.exampleTranslation) : "",
       memo: x.memo ? String(x.memo) : "",
       tags: x.tags ? String(x.tags) : "",
       synonyms: x.synonyms ? String(x.synonyms) : "",
@@ -784,17 +785,18 @@ async function getSynonymsSmart(word, max = 8) {
   return await fetchSynonymsViaSpace(word, max);
 }
 
-async function enrichTermViaAi(term) {
+async function enrichTermViaAi(term, existingExample = "") {
   const level = getAiLevel();
   const result = await callOpenAiJson({
     instruction: "You are a careful English-learning dictionary editor for Japanese learners. Return only valid JSON, with no markdown. Never invent an etymology; mention origin only when well established.",
-    input: `Create vocabulary-card information for the English word or phrase below. ${__aiLevelInstruction(level)} The Japanese memo should briefly explain nuance, usage, or a reliable word origin when useful. Return exactly this JSON shape: {"meaning":"concise Japanese meaning","synonyms":["up to 8 English synonyms"],"example":"one natural English example sentence","memo":"concise Japanese usage note"}. For a phrase, synonyms may be equivalent phrases.\n\nTerm: ${term}`,
+    input: `Create vocabulary-card information for the English word or phrase below. ${__aiLevelInstruction(level)} The Japanese memo should briefly explain nuance, usage, or a reliable word origin when useful. Return exactly this JSON shape: {"meaning":"concise Japanese meaning","synonyms":["up to 8 English synonyms"],"example":"one natural English example sentence","exampleTranslation":"natural Japanese translation of exactly that example","memo":"concise Japanese usage note"}. For a phrase, synonyms may be equivalent phrases.\n\nTerm: ${term}\n${existingExample ? `Keep this exact existing example and translate it into Japanese: ${JSON.stringify(existingExample)}` : ""}`,
     maxOutputTokens: 1400,
   });
   return {
     meaning: String(result?.meaning || "").trim(),
     synonyms: (Array.isArray(result?.synonyms) ? result.synonyms : []).map((x) => String(x || "").trim()).filter(Boolean).slice(0, 8),
     example: String(result?.example || "").trim(),
+    exampleTranslation: String(result?.exampleTranslation || "").trim(),
     memo: String(result?.memo || "").trim(),
   };
 }
@@ -1163,6 +1165,8 @@ function setupAddForm() {
   const meaningEl = document.getElementById("meaning");
   const statusEl = document.getElementById("status");
   const exampleEl = document.getElementById("example");
+  const exampleTranslationEl = document.getElementById("exampleTranslation");
+  exampleEl.addEventListener("input", () => { if (exampleTranslationEl) exampleTranslationEl.value = ""; });
   const memoEl = document.getElementById("memo");
   const tagsEl = document.getElementById("tags");
   const synonymsEl = document.getElementById("synonyms");
@@ -1203,6 +1207,7 @@ function setState(text) {
     meaningEl.value = "";
     statusEl.value = "default";
     exampleEl.value = "";
+    if (exampleTranslationEl) exampleTranslationEl.value = "";
     memoEl.value = "";
     tagsEl.value = "";
     if (synonymsEl) synonymsEl.value = "";
@@ -1216,6 +1221,7 @@ function setState(text) {
     meaningEl.value = item.meaning || "";
     statusEl.value = item.status || "default";
     exampleEl.value = item.example || "";
+    if (exampleTranslationEl) exampleTranslationEl.value = item.exampleTranslation || "";
     memoEl.value = item.memo || "";
     tagsEl.value = item.tags || "";
     if (synonymsEl) synonymsEl.value = item.synonyms || "";
@@ -1462,11 +1468,14 @@ document.addEventListener("tangocho:incomingword", (ev) => {
     aiAssistBtn.textContent = "AIで補完中…";
     setMsg("意味・類義語・例文・メモを作成しています…", "");
     try {
-      const result = await enrichTermViaAi(term);
+      const originalExample = exampleEl.value.trim();
+      const result = await enrichTermViaAi(term, originalExample);
+      if (wordEl.value.trim() !== term || exampleEl.value.trim() !== originalExample) return;
       let filled = 0;
       if (!meaningEl.value.trim() && result.meaning) { meaningEl.value = result.meaning; filled++; setState("AI補完済み"); }
       if (synonymsEl && !synonymsEl.value.trim() && result.synonyms.length) { synonymsEl.value = result.synonyms.join(", "); filled++; }
       if (!exampleEl.value.trim() && result.example) { exampleEl.value = result.example; filled++; }
+      if (exampleTranslationEl && !exampleTranslationEl.value.trim() && result.exampleTranslation && exampleEl.value.trim() === String(result.example || "").trim()) { exampleTranslationEl.value = result.exampleTranslation; filled++; }
       if (!memoEl.value.trim() && result.memo) { memoEl.value = result.memo; filled++; }
       if (filled) setMsg(`AIで空欄を補完しました（${filled}項目）。内容は編集できます。`, "ok");
       else setMsg("入力済みの項目は上書きしませんでした。空欄を作って再度お試しください。", "ok");
@@ -1511,6 +1520,7 @@ document.addEventListener("tangocho:incomingword", (ev) => {
             meaning: m,
             status: statusEl.value || "default",
             example: exampleEl.value.trim(),
+            exampleTranslation: exampleEl.value.trim() ? (exampleTranslationEl?.value || "").trim() : "",
             memo: memoEl.value.trim(),
             tags: tagsEl.value.trim(),
             synonyms: synonymsEl ? synonymsEl.value.trim() : (prev.synonyms || ""),
@@ -1531,6 +1541,7 @@ document.addEventListener("tangocho:incomingword", (ev) => {
           meaning: m,
           status: statusEl.value || "default",
           example: exampleEl.value.trim(),
+          exampleTranslation: exampleEl.value.trim() ? (exampleTranslationEl?.value || "").trim() : "",
           memo: memoEl.value.trim(),
           tags: tagsEl.value.trim(),
           synonyms: synonymsEl ? synonymsEl.value.trim() : "",
@@ -1939,6 +1950,12 @@ listEl.innerHTML = "";
       ex.className = "word-meta";
       ex.textContent = `例: ${w.example}`;
       item.appendChild(ex);
+      if (w.exampleTranslation) {
+        const ja = document.createElement("div");
+        ja.className = "word-meta";
+        ja.textContent = `訳: ${w.exampleTranslation}`;
+        item.appendChild(ja);
+      }
     }
     if (w.memo) {
       const mm = document.createElement("div");
@@ -2469,6 +2486,7 @@ function normalizeImportedItem(x) {
     meaning,
     status: (x.status === "forgot" || x.status === "default" || x.status === "learned") ? x.status : "default",
     example: String(x.example || "").trim(),
+    exampleTranslation: String(x.exampleTranslation || "").trim(),
     memo: String(x.memo || "").trim(),
     tags: String(x.tags || "").trim(),
     synonyms: String(x.synonyms || "").trim(),

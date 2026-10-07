@@ -129,12 +129,14 @@
 
         <label class="field-label" for="example">例文（任意）</label>
         <textarea id="example" rows="2" placeholder="例: I was curious about it."></textarea>
+        <label class="field-label" for="exampleTranslation">例文の日本語訳（任意・編集可）</label>
+        <textarea id="exampleTranslation" rows="2"></textarea>
 
         <label class="field-label" for="memo">メモ（任意）</label>
         <textarea id="memo" rows="2" placeholder="ニュアンス・使い分けなど"></textarea>
 
         <button id="aiAssistBtn" class="primary-btn full-width ai-assist-btn" type="button">AIで空欄を補完</button>
-        <p class="note">意味・例文・メモの空欄だけを補完します。類義語は「類義語取得」で必要なときだけ追加できます。</p>
+        <p class="note">意味・例文・例文の日本語訳・メモの空欄だけを補完します。類義語は「類義語取得」で必要なときだけ追加できます。</p>
 
       <div id="editBanner" class="edit-banner" style="display:none">
         <div class="edit-title">編集モード</div>
@@ -266,18 +268,18 @@
   <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
   <script src="bank_enja.js"></script>
   <script src="vocab_pool.js"></script>
-  <script src="tangocho2-storage-shim.js?v=0.1.0"></script>
-  <script src="script.js?v=48.0.5"></script>
-  <script src="api-response-fix.js?v=48.0.6"></script>
-  <script src="tangocho2-fivewords.js?v=0.6.0"></script>
+  <script src="tangocho2-storage-shim.js?v=0.2.0"></script>
+  <script src="script.js?v=48.0.6"></script>
+  <script src="api-response-fix.js?v=48.0.7"></script>
+  <script src="tangocho2-fivewords.js?v=0.7.0"></script>
   <script src="tangocho2-auto-register.js?v=0.6.0"></script>
-  <script src="tangocho2-part5.js?v=0.13.0"></script>
+  <script src="tangocho2-part5.js?v=0.14.0"></script>
   <script src="tangocho2-backup.js?v=0.11.0"></script>
   <script src="tangocho2-spelling.js?v=0.7.1"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=0.16.0", { updateViaCache: 'none' })
+        navigator.serviceWorker.register("./service-worker.js?v=0.17.0", { updateViaCache: 'none' })
           .then(reg => reg.update()).catch(console.error);
       });
     }

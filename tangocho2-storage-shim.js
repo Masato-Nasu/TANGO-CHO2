@@ -60,7 +60,7 @@
   // example sentence per word.
   try {
     const syncScript = document.createElement('script');
-    syncScript.src = './tangocho2-example-sync.js?v=0.1.1';
+    syncScript.src = './tangocho2-example-sync.js?v=0.4.0';
     syncScript.async = false;
     document.head.appendChild(syncScript);
   } catch (_) {}

@@ -183,7 +183,7 @@
 
   // Default AI assist fills meaning, example, and memo only.
   // Synonyms remain opt-in via the dedicated 「類義語取得」 button.
-  async function enrichTermWithoutSynonyms(term) {
+  async function enrichTermWithoutSynonyms(term, existingExample = "") {
     const level = typeof getAiLevel === "function" ? getAiLevel() : "adult";
     const levelInstruction = typeof __aiLevelInstruction === "function" ? __aiLevelInstruction(level) : "";
 
@@ -193,7 +193,7 @@
 
     const result = await fixedCallOpenAiJson({
       instruction: "You are a careful English-learning dictionary editor for Japanese learners. Return only valid JSON, with no markdown. Never invent an etymology; mention origin only when well established.",
-      input: `Create vocabulary-card information for the English word or phrase below. ${levelInstruction} The Japanese memo should briefly explain nuance, usage, or a reliable word origin when useful. Return exactly this JSON shape: {"meaning":"concise Japanese meaning","example":"one natural English example sentence","memo":"concise Japanese usage note"}. Do not include synonyms or a synonyms field.\n\nTerm: ${term}`,
+      input: `Create vocabulary-card information for the English word or phrase below. ${levelInstruction} The Japanese memo should briefly explain nuance, usage, or a reliable word origin when useful. Return exactly this JSON shape: {"meaning":"concise Japanese meaning","example":"one natural English example sentence","exampleTranslation":"natural Japanese translation of exactly that example","memo":"concise Japanese usage note"}. Do not include synonyms or a synonyms field.\n\nTerm: ${term}\n${existingExample ? `Keep this exact existing example and translate it into Japanese: ${JSON.stringify(existingExample)}` : ""}`,
       maxOutputTokens: 1100,
     });
 
@@ -201,6 +201,7 @@
       meaning: String(result?.meaning || "").trim(),
       synonyms: [],
       example: String(result?.example || "").trim(),
+      exampleTranslation: String(result?.exampleTranslation || "").trim(),
       memo: String(result?.memo || "").trim(),
     };
   }

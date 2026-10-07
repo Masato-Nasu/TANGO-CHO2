@@ -72,6 +72,8 @@
       const selected = currentWord();
       if (!field || normalizeWord(selected) !== normalizeWord(word)) return;
       field.value = canonical;
+      const ja = document.getElementById('exampleTranslation');
+      if (ja) ja.value = canonical === sentence ? String(document.querySelector('#tc2FiveResult .tc2-translation')?.textContent || '').trim() : '';
     });
   }
 
@@ -81,7 +83,7 @@
     if (!word || !field) return;
 
     const canonical = readCanonical(word);
-    if (canonical) {
+    if (canonical && !field.value.trim()) {
       // Pre-fill before TANGO-CHO's existing AI Assist handler runs.
       // The core handler only fills blank fields, so it leaves this sentence intact.
       field.value = canonical;

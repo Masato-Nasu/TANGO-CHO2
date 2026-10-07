@@ -18,7 +18,7 @@
       }
 
       [
-        './tangocho2-example-sync.js?v=0.3.0',
+        './tangocho2-example-sync.js?v=0.4.0',
         './tangocho2-behavior.js?v=0.3.1',
         './tangocho2-progress.js?v=0.5.0'
       ].forEach(src => {
@@ -163,6 +163,8 @@
         if (meaning && !meaning.value.trim()) meaning.value = item.meaning || '';
         if (memo && !memo.value.trim()) memo.value = item.note || '';
         if (example && !example.value.trim()) example.value = lesson.sentence || '';
+        const exampleTranslation = document.getElementById('exampleTranslation');
+        if (exampleTranslation && !exampleTranslation.value.trim() && example?.value.trim() === String(lesson.sentence || '').trim()) exampleTranslation.value = lesson.translation || '';
         if (tags) {
           const vals = tags.value.split(',').map(x => x.trim()).filter(Boolean);
           if (!vals.some(x => x.toLowerCase() === '5words')) vals.push('5WORDS');
