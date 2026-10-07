@@ -20,7 +20,7 @@
       [
         './tangocho2-example-sync.js?v=0.4.0',
         './tangocho2-behavior.js?v=0.3.1',
-        './tangocho2-progress.js?v=0.5.0'
+        './tangocho2-progress.js?v=0.6.0'
       ].forEach(src => {
         if (document.querySelector(`script[data-tc2-extra="${src}"]`)) return;
         const script = document.createElement('script');
@@ -41,8 +41,51 @@
   const levelGuidance = {
     jhs: 'Japanese junior-high learner level. Prefer high-frequency, broadly useful words, but do not choose words that are too elementary.',
     hs: 'Japanese high-school to university-entrance level. Prefer useful reading vocabulary, abstract words, and common academic vocabulary.',
-    adult: 'Advanced adult Japanese learner / TOEIC 800+ level. Prefer useful but not obscure words seen in journalism, business, essays, and general nonfiction.'
+    adult: 'Advanced adult Japanese learner level. Prefer useful but not obscure words seen in journalism, business, essays, and general nonfiction.',
+    toeic800: 'TOEIC Listening and Reading preparation for a learner scoring 800+ and targeting 900+. Use only the supplied target words in practical workplace or everyday business senses. Explain useful collocations and word families in the notes.'
   };
+
+  // Independently curated practice vocabulary, not an ETS frequency ranking.
+  const TOEIC_GROUPS = [
+    'invoice reimbursement expenditure revenue budget surplus deficit transaction balance accounting deduction compensation payment billing receipt audit fiscal profitable overhead expense',
+    'contract agreement provision clause obligation compliance consent negotiation renewal termination liability warranty guarantee stipulation authorization mandatory valid eligible binding confidential',
+    'applicant vacancy recruitment qualification credential resume candidate interview personnel orientation probation promotion supervisor subordinate colleague expertise proficient competent enthusiastic diligent',
+    'shipment delivery inventory warehouse supplier distributor retailer merchandise consignment freight cargo logistics dispatch expedite replenish stock shortage surplus procurement bulk',
+    'proposal presentation conference seminar agenda minutes attendee venue registration reservation itinerary accommodation hospitality banquet convention coordinator notification announcement confirmation arrangement',
+    'renovation maintenance inspection installation equipment appliance facility premises property construction contractor architect blueprint expansion relocation accessible adjacent spacious occupancy',
+    'inquiry complaint feedback satisfaction refund replacement defective durable reliable convenient courteous prompt exceptional satisfactory assistance representative clientele patron complimentary',
+    'advertisement promotion campaign publicity brochure catalog subscription circulation incentive discount competitive affordable exclusive appealing prospective potential demand launch endorsement',
+    'assessment evaluation performance efficiency productivity objective initiative strategy implementation procedure policy regulation guideline requirement priority progress accomplishment improvement monitoring',
+    'amend revise approve authorize designate allocate delegate oversee undertake conduct facilitate coordinate collaborate consolidate retain acquire obtain ensure verify',
+    'anticipate accommodate comply adhere submit fulfill resolve rectify reimburse incur waive withdraw postpone resume suspend discontinue notify acknowledge clarify',
+    'substantial considerable significant sufficient adequate appropriate relevant applicable feasible tentative preliminary subsequent consecutive periodic annual quarterly promptly accordingly mutually'
+  ].map(group => group.split(' '));
+
+  function toeicTargets(existing) {
+    const registered = new Set(existing);
+    const seen = new Set();
+    for (const key of Object.keys(localStorage)) {
+      if (!key.startsWith(LESSON_PREFIX)) continue;
+      try {
+        const lesson = JSON.parse(localStorage.getItem(key));
+        if (lesson?.level === 'toeic800') (lesson.words || []).forEach(w => seen.add(String(w.word).toLowerCase()));
+      } catch (_) {}
+    }
+    const groups = TOEIC_GROUPS.map(group => group.filter(w => !registered.has(w)));
+    const fresh = groups.map(group => group.filter(w => !seen.has(w)));
+    const all = [...new Set(groups.flat())];
+    if (all.length < 5) throw new Error('TOEIC 800+の対象語は、未登録が5語未満です。単語帳やPART 5で復習できます。');
+    const freshAll = [...new Set(fresh.flat())];
+    const candidates = freshAll.length >= 5 ? fresh : groups;
+    const coherent = candidates.filter(group => group.length >= 5);
+    const choices = coherent.length ? coherent[Math.floor(Math.random() * coherent.length)] : (freshAll.length >= 5 ? freshAll : all);
+    const shuffled = [...choices];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled.slice(0, 5);
+  }
 
   const esc = (s = '') => String(s).replace(/[&<>'"]/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
@@ -113,6 +156,7 @@
     }
 
     const existing = [...new Set(currentVocabulary().map(w => w.toLowerCase()))];
+    const targets = level === 'toeic800' ? toeicTargets(existing) : null;
     const avoid = existing.slice(-3000).join(', ') || '(none)';
 
     const instruction = [
@@ -130,10 +174,16 @@
     const input = [
       `Level: ${level}`,
       `Level guidance: ${levelGuidance[level]}`,
-      `Existing vocabulary to avoid: ${avoid}`
+      `Existing vocabulary to avoid: ${avoid}`,
+      ...(targets ? [`Mandatory target words: ${targets.join(', ')}. Return exactly these five words, spelled exactly as supplied. Do not substitute, inflect, or add target words. Use a natural TOEIC-style workplace sentence.`] : [])
     ].join('\n');
 
-    const result = await callOpenAiJson({ instruction, input, maxOutputTokens: 1200 });
+    let result;
+    for (let attempt = 0; attempt < (targets ? 2 : 1); attempt++) {
+      result = await callOpenAiJson({ instruction, input, maxOutputTokens: 1200 });
+      if (!targets || (isValidLesson(result) && new Set(result.words.map(w => String(w.word).trim().toLowerCase())).size === 5 && result.words.every(w => targets.includes(String(w.word).trim().toLowerCase())))) break;
+      result = null;
+    }
     if (!isValidLesson(result)) throw new Error('5語のデータ形式が正しくありませんでした。もう一度お試しください。');
 
     result.words = result.words.map(w => ({
@@ -251,7 +301,7 @@
       <div class="tc2-fivewords-head">
         <div>
           <h2 class="tc2-title">5 WORDS × TANGO-CHO2</h2>
-          <div class="tc2-sub">好きなときに5語と1つの英文を生成。5語は単語帳へ自動登録します。</div>
+          <div class="tc2-sub">好きなときに5語と1つの英文を生成。必要な語だけ、自分で単語帳へ保存できます。</div>
         </div>
       </div>
 
@@ -262,12 +312,13 @@
             <select id="tc2FiveLevel" class="select">
               <option value="jhs">中学生向き</option>
               <option value="hs">高校・大学受験</option>
-              <option value="adult">大人 / TOEIC 800+</option>
+              <option value="adult">大人（一般）</option>
+              <option value="toeic800">TOEIC 800+（対象語を限定）</option>
             </select>
           </label>
           <button id="tc2FiveGenerate" class="primary-btn" type="button">5語を生成</button>
         </div>
-        <div class="tc2-sub">すでにTANGO-CHO2にある単語はAIに避けさせます。回数制限はありません。生成セットは端末に保存されます。</div>
+        <div class="tc2-sub">TOEIC 800+はビジネス・日常場面の対象リストから未登録の5語を選びます。一般向けはAIが選びます。回数制限はありません。</div>
         <div id="tc2FiveStatus" class="tc2-status" aria-live="polite"></div>
       </div>
 

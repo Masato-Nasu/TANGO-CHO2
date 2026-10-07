@@ -8,7 +8,8 @@
   const LEVEL_LABELS = {
     jhs: '中学生',
     hs: '高校・大学受験',
-    adult: '大人 / TOEIC 800+'
+    adult: '大人（一般）',
+    toeic800: 'TOEIC 800+'
   };
 
   function currentLevel() {
