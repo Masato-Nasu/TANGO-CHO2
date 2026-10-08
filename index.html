@@ -17,15 +17,54 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="style.css?v=48.0.3" />
   <link rel="stylesheet" href="tangocho2-layout-fix.css?v=0.5.0" />
+  <link rel="stylesheet" href="tangocho2-theme.css?v=0.3.0" data-tc2-theme="1" />
   <style>
+    html{background:#fffaf2}
+    #tc2BootScreen{display:none}
+    html[data-tc2-boot] body > :not(#tc2BootScreen){visibility:hidden!important}
+    html[data-tc2-boot] #tc2BootScreen{display:flex;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:#fffaf2;color:#252420;font-family:system-ui,sans-serif}
+    #tc2BootScreen strong{font-size:28px;letter-spacing:-.04em}
+    #tc2BootScreen span{font-size:14px;color:#77736d}
     .ai-assist-btn{
       width:100%;max-width:100%;box-sizing:border-box;
       white-space:normal;overflow-wrap:anywhere;
       text-align:center;line-height:1.3;
     }
   </style>
+  <script>
+    (() => {
+      const root = document.documentElement;
+      root.setAttribute('data-tc2-boot', 'pending');
+      let domReady = false;
+      let completed = false;
+      const check = () => {
+        if (completed || !domReady) return;
+        const category = document.getElementById('status');
+        if (!document.getElementById('tc2FiveLevel') || !document.getElementById('tc2ProgressHero') || category?.parentElement.style.display !== 'none') return;
+        completed = true;
+        observer.disconnect();
+        requestAnimationFrame(() => {
+          root.removeAttribute('data-tc2-boot');
+          document.body.removeAttribute('aria-busy');
+        });
+      };
+      const observer = new MutationObserver(check);
+      observer.observe(root, {childList:true, subtree:true, attributes:true});
+      document.addEventListener('DOMContentLoaded', () => {
+        domReady = true;
+        document.body.setAttribute('aria-busy', 'true');
+        check();
+      }, {once:true});
+      setTimeout(() => {
+        if (completed) return;
+        const message = document.querySelector('#tc2BootScreen span');
+        if (message) message.textContent = '読み込みに時間がかかっています。再読み込みしてください。';
+      }, 15000);
+    })();
+  </script>
 </head>
 <body>
+  <div id="tc2BootScreen" role="status"><strong>TANGO-CHO2</strong><span>読み込み中…</span></div>
   <header class="app-header">
     <h1>TANGO-CHO2</h1>
   </header>
@@ -279,7 +318,7 @@
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=0.17.0", { updateViaCache: 'none' })
+        navigator.serviceWorker.register("./service-worker.js?v=0.22.0", { updateViaCache: 'none' })
           .then(reg => reg.update()).catch(console.error);
       });
     }
