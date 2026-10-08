@@ -6,17 +6,20 @@
   const WORDS = 'tangoCho2Words';
   const PART5 = 'tangoCho2Part5Stats:v1';
   const STUDY = 'tangoCho2StudyHist';
+  const TIME = 'tangoCho2ActiveStudyTime:v1';
   let dbPromise, queue = Promise.resolve();
   const parse = (key, fallback) => {
     const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : fallback;
   };
   function payload() {
+    window.tc2FlushStudyTime?.();
     return {
-      app: 'TANGO-CHO2', backupVersion: 1, version: '0.11.0', exportedAt: new Date().toISOString(),
+      app: 'TANGO-CHO2', backupVersion: 1, version: '0.12.0', exportedAt: new Date().toISOString(),
       words: parse(WORDS, []),
       part5: parse(PART5, {words:{},sessions:[]}),
-      studyHistory: parse(STUDY, [])
+      studyHistory: parse(STUDY, []),
+      studyTime: parse(TIME, {totalMs:0})
     };
   }
   function message(text) {
@@ -42,7 +45,7 @@
   }
   async function saveSnapshot(data, refreshTimestamp = false) {
     const db = await openDb();
-    const fingerprint = JSON.stringify({words:data.words,part5:data.part5,studyHistory:data.studyHistory});
+    const fingerprint = JSON.stringify({words:data.words,part5:data.part5,studyHistory:data.studyHistory,studyTime:data.studyTime});
     await new Promise((resolve,reject) => {
       const tx = db.transaction(STORE,'readwrite');
       const store = tx.objectStore(STORE);
@@ -109,6 +112,10 @@
       if (!Array.isArray(data.studyHistory) || !data.studyHistory.every(x => x === 0 || x === 1)) throw new Error('クイズの履歴形式が正しくありません。');
       result.studyHistory = data.studyHistory.slice(-80);
     }
+    if (!Array.isArray(data) && Object.hasOwn(data,'studyTime')) {
+      if (!data.studyTime || !Number.isFinite(data.studyTime.totalMs) || data.studyTime.totalMs < 0) throw new Error('学習時間の形式が正しくありません。');
+      result.studyTime = {totalMs:Math.round(data.studyTime.totalMs)};
+    }
     return result;
   }
   async function restore(data, correctSpelling = false) {
@@ -152,7 +159,7 @@
     const correctionText = corrections.size ? `スペル修正（${corrections.size}語）：\n${[...corrections].map(([a,b])=>`${a} → ${b}`).join('\n')}` : '';
     if (correctionText) message(correctionText);
 
-    const text = `単語帳を${incoming.words.length}語に復元します。${incoming.part5 ? 'PART 5の成績も復元します。' : 'PART 5の成績は変更しません。'}現在のデータは自動バックアップに退避します。よろしいですか？`;
+    const text = `単語帳を${incoming.words.length}語に復元します。${incoming.part5 ? 'PART 5の成績も復元します。' : 'PART 5の成績は変更しません。'}${incoming.studyTime ? '累計学習時間も復元します。' : ''}現在のデータは自動バックアップに退避します。よろしいですか？`;
     if (!confirm(text + (correctionText ? '\n\n'+correctionText : ''))) return;
     // Ensure the current state really exists in history before replacing it.
     await queue;
@@ -160,6 +167,7 @@
     const changes = [[WORDS,JSON.stringify(incoming.words)]];
     if (incoming.part5) changes.push([PART5,JSON.stringify(incoming.part5)]);
     if (incoming.studyHistory) changes.push([STUDY,JSON.stringify(incoming.studyHistory)]);
+    if (incoming.studyTime) changes.push([TIME,JSON.stringify(incoming.studyTime)]);
     const previous = changes.map(([key]) => [key,localStorage.getItem(key)]);
     try {
       for (const [key,value] of changes) localStorage.setItem(key,value);
