@@ -15,7 +15,7 @@
   function payload() {
     window.tc2FlushStudyTime?.();
     return {
-      app: 'TANGO-CHO2', backupVersion: 1, version: '0.12.0', exportedAt: new Date().toISOString(),
+      app: 'TANGO-CHO2', backupVersion: 1, version: '0.13.0', exportedAt: new Date().toISOString(),
       words: parse(WORDS, []),
       part5: parse(PART5, {words:{},sessions:[]}),
       studyHistory: parse(STUDY, []),
@@ -114,7 +114,15 @@
     }
     if (!Array.isArray(data) && Object.hasOwn(data,'studyTime')) {
       if (!data.studyTime || !Number.isFinite(data.studyTime.totalMs) || data.studyTime.totalMs < 0) throw new Error('学習時間の形式が正しくありません。');
-      result.studyTime = {totalMs:Math.round(data.studyTime.totalMs)};
+      result.studyTime = {totalMs:Math.round(data.studyTime.totalMs),days:{}};
+      if (Object.hasOwn(data.studyTime,'days')) {
+        const days = data.studyTime.days;
+        if (!days || typeof days !== 'object' || Array.isArray(days)) throw new Error('日別学習時間の形式が正しくありません。');
+        for (const [day,ms] of Object.entries(days)) {
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isFinite(ms) || ms < 0) throw new Error('日別学習時間の形式が正しくありません。');
+          result.studyTime.days[day] = Math.round(ms);
+        }
+      }
     }
     return result;
   }
@@ -159,7 +167,7 @@
     const correctionText = corrections.size ? `スペル修正（${corrections.size}語）：\n${[...corrections].map(([a,b])=>`${a} → ${b}`).join('\n')}` : '';
     if (correctionText) message(correctionText);
 
-    const text = `単語帳を${incoming.words.length}語に復元します。${incoming.part5 ? 'PART 5の成績も復元します。' : 'PART 5の成績は変更しません。'}${incoming.studyTime ? '累計学習時間も復元します。' : ''}現在のデータは自動バックアップに退避します。よろしいですか？`;
+    const text = `単語帳を${incoming.words.length}語に復元します。${incoming.part5 ? 'PART 5の成績も復元します。' : 'PART 5の成績は変更しません。'}${incoming.studyTime ? '今日と累計の学習時間も復元します。' : ''}現在のデータは自動バックアップに退避します。よろしいですか？`;
     if (!confirm(text + (correctionText ? '\n\n'+correctionText : ''))) return;
     // Ensure the current state really exists in history before replacing it.
     await queue;
