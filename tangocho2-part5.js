@@ -11,6 +11,7 @@
   let session = null;
   let generating = false;
   let root;
+  let lastDismissed = null;
 
   function vocabulary() {
     return (typeof loadWords === 'function' ? loadWords() : []).filter(w => w.word && w.meaning);
@@ -22,10 +23,10 @@
     const attempts = all.reduce((n,w) => n + w.attempts, 0);
     const correct = all.reduce((n,w) => n + w.correct, 0);
     const ms = all.reduce((n,w) => n + w.ms, 0);
-    const weak = all.filter(w => w.correct < w.attempts)
+    const weak = all.filter(w => w.correct < w.attempts && !w.weakDismissed)
       .sort((a,b) => a.correct/a.attempts - b.correct/b.attempts || b.ms/b.attempts - a.ms/a.attempts).slice(0,15);
     return `<div class="p5-stats"><div><b>${attempts ? Math.round(correct / attempts * 100) : '—'}${attempts ? '%' : ''}</b><span>累計正答率（${attempts}問）</span></div><div><b>${attempts ? (ms / attempts / 1000).toFixed(1) + '秒' : '—'}</b><span>平均回答時間</span></div></div>
-      <h3>苦手語</h3>${weak.length ? `<ul class="p5-weak">${weak.map(w => `<li><button type="button" class="p5-word-link" data-p5-word="${esc(w.word)}" aria-label="${esc(w.word)}の詳細を開く">${esc(w.word)}</button><span>${Math.round(w.correct/w.attempts*100)}% · ${w.attempts}問 · 平均${(w.ms/w.attempts/1000).toFixed(1)}秒</span></li>`).join('')}</ul>` : '<p class="note">不正解だった登録語がここに表示されます。</p>'}`;
+      <h3>苦手語</h3>${lastDismissed ? `<p class="note" role="status">「${esc(lastDismissed)}」を一覧から外しました。 <button type="button" id="p5UndoWeak" class="ghost-btn">元に戻す</button></p>` : ''}${weak.length ? `<ul class="p5-weak">${weak.map(w => `<li><button type="button" class="p5-word-link" data-p5-word="${esc(w.word)}" aria-label="${esc(w.word)}の詳細を開く">${esc(w.word)}</button><span>${Math.round(w.correct/w.attempts*100)}% · ${w.attempts}問 · 平均${(w.ms/w.attempts/1000).toFixed(1)}秒</span><button type="button" class="ghost-btn p5-dismiss" data-p5-dismiss="${esc(w.word)}" aria-label="${esc(w.word)}を苦手語一覧から外す">一覧から外す</button></li>`).join('')}</ul>` : '<p class="note">不正解だった登録語がここに表示されます。</p>'}`;
   }
 
   function renderStats() { root.querySelector('#p5Stats').innerHTML = statsHtml(); }
@@ -192,6 +193,7 @@
     const key = norm(q.word.word);
     const w = stats.words[key] || {word:q.word.word,attempts:0,correct:0,ms:0};
     w.attempts++; w.correct += Number(correct); w.ms += elapsed; w.lastAnsweredAt = new Date().toISOString();
+    if (!correct) { delete w.weakDismissed; if (norm(lastDismissed) === key) lastDismissed = null; }
     stats.words[key] = w;
     localStorage.setItem(STATS_KEY, JSON.stringify(stats));
     session.results.push({word:q.word.word,type:q.type,correct,ms:elapsed});
@@ -242,7 +244,7 @@
     if (!root) return;
     root.innerHTML = `<div class="card"><h2>PART 5</h2><p class="note">登録語を使った英文穴埋め4択。好きなときに、何度でも。</p><div class="p5-controls"><label class="field-label">出題タイプ<select class="select" id="p5Mode"><option>VOCAB</option><option>WORD FORM</option><option>MIX</option></select></label><label class="field-label">練習する語数<select class="select" id="p5Count"><option value="5">5語</option><option value="10">10語</option><option value="30">30語</option></select></label></div><label class="p5-priority"><input type="checkbox" id="p5Priority" checked>「覚えてない」「うろ覚え」を優先</label><p class="note">初回の問題作成にはAI設定（BYOK）が必要です。作成済みの問題は再利用できます。成績は端末に保存され、単語帳の学習状態は自動変更しません。</p><div class="p5-actions"><button id="p5Start" class="primary-btn" type="button">練習を始める</button><button id="p5End" class="secondary-btn" type="button" hidden>ここまでの結果を見る</button></div><p id="p5Message" class="note" role="status"></p></div><div id="p5Practice"></div><div id="p5Stats" class="card"></div>`;
     const style = document.createElement('style');
-    style.textContent = `#part5Section .p5-word-link{border:0;background:transparent;color:inherit;font:inherit;font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer;min-height:44px;padding:8px;text-align:left}#part5Section .p5-word-link:focus-visible{outline:2px solid currentColor;outline-offset:2px}#p5WordDetailSection .p5-detail-text{white-space:pre-wrap;overflow-wrap:anywhere}#p5WordDetailSection h2{overflow-wrap:anywhere}#part5Section .p5-controls{display:flex;gap:12px;flex-wrap:wrap}#part5Section .p5-controls label{flex:1;min-width:130px}#part5Section .p5-priority{display:flex;align-items:center;gap:8px;margin:16px 0;line-height:1.6}#part5Section .p5-actions{display:flex;gap:10px;flex-wrap:wrap}#part5Section .p5-sentence{font-size:1.18rem;line-height:1.8;overflow-wrap:anywhere}#part5Section .p5-options{display:grid;gap:10px}#part5Section .p5-options button{text-align:left;white-space:normal;overflow-wrap:anywhere;padding:14px}#part5Section .p5-options button:disabled{opacity:1}#part5Section .p5-options [data-result="correct"]{border:2px solid #168061;background:#e5f6ed}#part5Section .p5-options [data-result="wrong"]{border:2px solid #b34837;background:#fbece8}#part5Section #p5Feedback{white-space:pre-wrap;line-height:1.7;margin:16px 0}#part5Section .p5-stats{display:flex;gap:20px;flex-wrap:wrap}#part5Section .p5-stats b{display:block;font-size:1.7rem}#part5Section .p5-stats span,#part5Section .p5-label{font-size:.85rem;color:var(--muted,#666)}#part5Section .p5-weak{list-style:none;padding:0}#part5Section .p5-weak li{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid #e6e1d8}#part5Section .p5-weak li span{font-size:.85rem}#part5Section [hidden]{display:none!important}`;
+    style.textContent = `#part5Section .p5-word-link{border:0;background:transparent;color:inherit;font:inherit;font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer;min-height:44px;padding:8px;text-align:left}#part5Section .p5-word-link:focus-visible{outline:2px solid currentColor;outline-offset:2px}#p5WordDetailSection .p5-detail-text{white-space:pre-wrap;overflow-wrap:anywhere}#p5WordDetailSection h2{overflow-wrap:anywhere}#part5Section .p5-controls{display:flex;gap:12px;flex-wrap:wrap}#part5Section .p5-controls label{flex:1;min-width:130px}#part5Section .p5-priority{display:flex;align-items:center;gap:8px;margin:16px 0;line-height:1.6}#part5Section .p5-actions{display:flex;gap:10px;flex-wrap:wrap}#part5Section .p5-sentence{font-size:1.18rem;line-height:1.8;overflow-wrap:anywhere}#part5Section .p5-options{display:grid;gap:10px}#part5Section .p5-options button{text-align:left;white-space:normal;overflow-wrap:anywhere;padding:14px}#part5Section .p5-options button:disabled{opacity:1}#part5Section .p5-options [data-result="correct"]{border:2px solid #168061;background:#e5f6ed}#part5Section .p5-options [data-result="wrong"]{border:2px solid #b34837;background:#fbece8}#part5Section #p5Feedback{white-space:pre-wrap;line-height:1.7;margin:16px 0}#part5Section .p5-stats{display:flex;gap:20px;flex-wrap:wrap}#part5Section .p5-stats b{display:block;font-size:1.7rem}#part5Section .p5-stats span,#part5Section .p5-label{font-size:.85rem;color:var(--muted,#666)}#part5Section .p5-weak{list-style:none;padding:0}#part5Section .p5-weak li{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid #e6e1d8}#part5Section .p5-weak li span{font-size:.85rem}#part5Section .p5-dismiss{font-size:.8rem;min-height:44px;padding:8px 12px;margin-left:auto}#part5Section [hidden]{display:none!important}`;
     document.head.appendChild(style);
     root.querySelector('#p5Start').addEventListener('click', start);
     root.querySelector('#p5End').addEventListener('click', finish);
@@ -254,6 +256,21 @@
       }
     }, true);
     root.addEventListener('click', ev => {
+      const dismiss = ev.target.closest('[data-p5-dismiss]');
+      const undo = ev.target.closest('#p5UndoWeak');
+      if (dismiss || undo) {
+        const name = dismiss ? dismiss.dataset.p5Dismiss : lastDismissed;
+        const stats = read(STATS_KEY, {words:{},sessions:[]});
+        const word = stats.words[norm(name)];
+        if (!word) return;
+        if (dismiss) word.weakDismissed = true; else delete word.weakDismissed;
+        try {
+          localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+          lastDismissed = dismiss ? name : null;
+          renderStats();
+        } catch (_) { root.querySelector('#p5Message').textContent = '変更を保存できませんでした。端末の空き容量をご確認ください。'; }
+        return;
+      }
       const wordLink = ev.target.closest('[data-p5-word]');
       if (wordLink) { openWordDetail(wordLink.dataset.p5Word); return; }
       const answer = ev.target.closest('[data-p5-answer]');

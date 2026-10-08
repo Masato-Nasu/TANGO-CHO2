@@ -11,7 +11,7 @@ const repo=path.resolve(__dirname,'..');
   localStorage.setItem('tangoCho2Words',JSON.stringify([{id:'flurry',word:'flurry',meaning:'にわか雪・慌ただしさ',example:'There was a flurry of activity.',memo:'メモ\n二行目 <script>window.bad=1</script>',synonyms:'burst, rush',tags:'TOEIC',status:'fuzzy'}]));
   localStorage.setItem('tangoCho2Part5Stats:v1',JSON.stringify({words:{flurry:{word:'flurry',attempts:1,correct:0,ms:16600},invoice:{word:'invoice',attempts:2,correct:0,ms:1200}},sessions:[]}));
  });
- await page.goto('http://127.0.0.1:8771/');
+ await page.goto('http://127.0.0.1:8771/');await page.waitForFunction(()=>!document.documentElement.hasAttribute('data-tc2-boot'));
  const baseline=await page.evaluate(()=>({words:localStorage.getItem('tangoCho2Words'),stats:localStorage.getItem('tangoCho2Part5Stats:v1')}));
  await page.locator('[data-section="part5Section"]').click();
  await page.getByRole('button',{name:'flurryの詳細を開く',exact:true}).tap();await page.locator('#p5WordDetailSection.active').waitFor({timeout:4000});

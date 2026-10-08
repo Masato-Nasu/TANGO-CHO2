@@ -78,6 +78,14 @@ async function complete(page,count,wrongFirst=false) {
  assert.equal(stats.sessions.length,3);
  assert.equal(await page.evaluate(()=>localStorage.getItem('tangoCho2Words')),baseline);
  console.log('PASS: VOCAB/WORD FORM/MIX, 5/10/30 questions, weak priority, accuracy/timing/history, statuses unchanged');
+ const weakWord=Object.values(stats.words).find(w=>w.correct<w.attempts).word;
+ const originalStats=JSON.stringify(stats);
+ await page.locator('[data-p5-dismiss]').first().click();assert.equal(await page.locator('[data-p5-word]').count(),0);assert.equal(await page.evaluate(()=>localStorage.getItem('tangoCho2Words')),baseline);
+ let hiddenStats=await page.evaluate(()=>JSON.parse(localStorage.getItem('tangoCho2Part5Stats:v1')));assert.equal(hiddenStats.words[weakWord].weakDismissed,true);delete hiddenStats.words[weakWord].weakDismissed;assert.equal(JSON.stringify(hiddenStats),originalStats);
+ await page.locator('#p5UndoWeak').click();assert.equal(await page.locator('[data-p5-word]').count(),1);await page.locator('[data-p5-dismiss]').first().click();await page.reload();await page.locator('[data-section="part5Section"]').click();assert.equal(await page.locator('[data-p5-word]').count(),0);
+ await page.locator('[data-section="addSection"]').click();await page.locator('#connSettingsCard summary').click();const downloadPromise=page.waitForEvent('download');await page.locator('#exportJsonBtn').click();const downloaded=await downloadPromise;const backup=JSON.parse(fs.readFileSync(await downloaded.path(),'utf8'));assert.equal(backup.part5.words[weakWord].weakDismissed,true);
+ await page.evaluate(word=>{const w=loadWords().find(w=>w.word===word);localStorage.setItem('tangoCho2Words',JSON.stringify([w]));},weakWord);await mockAI(page);await page.locator('[data-section="part5Section"]').click();await page.locator('#p5Count').selectOption('5');await page.locator('#p5Start').click();await page.locator('.p5-label').waitFor();await complete(page,5,true);assert.equal(await page.locator('[data-p5-word]').count(),1);assert.equal(await page.evaluate(word=>JSON.parse(localStorage.getItem('tangoCho2Part5Stats:v1')).words[word].weakDismissed,weakWord),undefined);await page.evaluate(words=>localStorage.setItem('tangoCho2Words',words),baseline);
+ console.log('PASS: weak-word dismissal, undo, persistence, unchanged totals/vocabulary, JSON backup flag, wrong answer returns word');
  await page.locator('[data-section="fortuneSection"]').click();
  await page.locator('#tc2FiveGenerate').click();
  await page.waitForFunction(()=>document.querySelectorAll('#tc2FiveResult .tc2-word').length===5);
@@ -136,7 +144,7 @@ async function complete(page,count,wrongFirst=false) {
  await p.evaluate(async()=>{localStorage.setItem('tangoCho2Words',JSON.stringify([{id:'pwa',word:'care',meaning:'注意',status:'fuzzy'}]));await caches.open('tango-cho-cache-original');});
  for(const file of ['tangocho2-storage-shim.js','tangocho2-example-sync.js','index.html','service-worker.js','script.js','tangocho2-behavior.js','api-response-fix.js','tangocho2-fivewords.js','tangocho2-auto-register.js','tangocho2-progress.js','tangocho2-layout-fix.css','tangocho2-part5.js','tangocho2-backup.js','tangocho2-study-time.js','tangocho2-spelling.js']) fs.copyFileSync(`${repo}/${file}`,`${upgradeDir}/${file}`);
  await p.reload();
- await p.waitForFunction(async()=> (await caches.keys()).includes('tango-cho2-cache-v0.24.0') && !(await caches.keys()).includes('tango-cho2-cache-v0.4.0'),{timeout:90000});
+ await p.waitForFunction(async()=> (await caches.keys()).includes('tango-cho2-cache-v0.25.0') && !(await caches.keys()).includes('tango-cho2-cache-v0.4.0'),{timeout:90000});
  assert((await p.evaluate(()=>caches.keys())).includes('tango-cho-cache-original'));
  await p.locator('[data-section="part5Section"]').click();
  assert(await p.locator('#p5Start').isVisible());
