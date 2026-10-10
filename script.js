@@ -439,6 +439,7 @@ function sanitizeImportedWords(arr) {
       word: w,
       meaning: m,
       status: normalizeStatus(x.status),
+      quizHistory: Array.isArray(x.quizHistory) && x.quizHistory.every(n => n === 0 || n === 1) ? x.quizHistory.slice(-5) : [],
       example: x.example ? String(x.example) : "",
       exampleTranslation: x.exampleTranslation ? String(x.exampleTranslation) : "",
       memo: x.memo ? String(x.memo) : "",
@@ -2112,7 +2113,7 @@ function _buildQuizDeckOrder(poolWords, pool) {
   ];
 
   // Interleave by ratio while any items remain
-  while (groups.forgot.length || groups.default.length || groups.learned.length) {
+  while (groups.forgot.length || groups.fuzzy.length || groups.default.length || groups.learned.length) {
     for (const [k, n] of steps) {
       for (let i = 0; i < n; i++) {
         if (groups[k].length) order.push(groups[k].pop());
@@ -2124,7 +2125,7 @@ function _buildQuizDeckOrder(poolWords, pool) {
 }
 
 function _ensureQuizDeck(mode, pool, poolWords) {
-  const key = `${mode}|${pool}`;
+  const key = `${mode}|${pool}|${poolWords.map(w => w.id).join(",")}`;
   const needsNew = (quizDeckState.key !== key) || (quizDeckState.order.length === 0) || (quizDeckState.idx >= quizDeckState.order.length);
   if (!needsNew) return;
   quizDeckState.key = key;
@@ -2314,6 +2315,19 @@ function escapeHtml(s) {
   }[m]));
 }
 
+function recordWordQuizResult(id, correct) {
+  const words = loadWords();
+  const word = words.find(w => w.id === id);
+  if (!word) return "";
+  const history = Array.isArray(word.quizHistory) ? word.quizHistory.filter(n => n === 0 || n === 1) : [];
+  word.quizHistory = [...history, Number(correct)].slice(-5);
+  const count = word.quizHistory.length;
+  const score = word.quizHistory.reduce((a,b) => a+b, 0);
+  if (count === 5) word.status = score >= 4 ? "learned" : score >= 2 ? "fuzzy" : "forgot";
+  if (!saveWords(words)) return "回答履歴を保存できませんでした。学習状態は更新していません。";
+  return count < 5 ? `自動判定まであと${5-count}回答` : `直近5回の正答率 ${score*20}% → ${STATUS_LABEL[word.status]}（自動判定）`;
+}
+
 function onAnswer(selected) {
   if (!quizState.current || quizState.answered) return;
   quizState.answered = true;
@@ -2323,6 +2337,9 @@ function onAnswer(selected) {
   const isCorrect = selected === q.correct;
   if (isCorrect) quizState.correct += 1;
   try{ recordStudyResult(isCorrect); }catch(_){}
+  let autoStatusMessage = "";
+  try { autoStatusMessage = recordWordQuizResult(q.target.id, isCorrect); }
+  catch (_) { autoStatusMessage = "回答履歴の保存に失敗しました。"; }
 
   // SFX + big mark
   const resultEl = document.getElementById("quizResult");
@@ -2388,6 +2405,11 @@ function onAnswer(selected) {
     // Avoid showing the correct answer text redundantly; it's revealed in the main reveal area.
     msg.textContent = isCorrect ? "正解！" : "不正解";
     footEl.appendChild(msg);
+    if (autoStatusMessage) {
+      const autoNote = document.createElement("div");
+      autoNote.id = "quizAutoStatus"; autoNote.className = "quiz-mini";
+      autoNote.textContent = autoStatusMessage; footEl.appendChild(autoNote);
+    }
 
     const actions = document.createElement("div");
     actions.style.display = "flex";

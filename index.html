@@ -308,7 +308,7 @@
   <script src="bank_enja.js"></script>
   <script src="vocab_pool.js"></script>
   <script src="tangocho2-storage-shim.js?v=0.2.0"></script>
-  <script src="script.js?v=48.0.8"></script>
+  <script src="script.js?v=48.0.9"></script>
   <script src="api-response-fix.js?v=48.0.7"></script>
   <script src="tangocho2-fivewords.js?v=0.11.0"></script>
   <script src="tangocho2-auto-register.js?v=0.6.0"></script>
@@ -319,7 +319,7 @@
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=0.23.0", { updateViaCache: 'none' })
+        navigator.serviceWorker.register("./service-worker.js?v=0.27.0", { updateViaCache: 'none' })
           .then(reg => reg.update()).catch(console.error);
       });
     }
