@@ -2184,12 +2184,14 @@ function statusWeight(st) {
 
 function buildQuestion(mode, pool) {
   const poolWords = getPoolWords(pool);
-  if (poolWords.length < 4) return { error: "4択クイズには、同じ出題カテゴリ内に単語が最低4つ必要です。" };
+  if (!poolWords.length) return { error: "この出題カテゴリには単語がありません。単語帳で学習状態を確認してください。" };
+  const allWords = loadWords();
+  if (allWords.length < 4) return { error: "4択クイズには、単語帳全体に単語が最低4つ必要です。" };
 
   // For 日→英 (ja2en): show Japanese meaning under each English choice.
   // Build a quick lookup table: { [word]: meaning }
   const wordToMeaning = {};
-  for (const w of poolWords) {
+  for (const w of allWords) {
     const k = (w && w.word) ? String(w.word) : "";
     if (!k) continue;
     if (wordToMeaning[k] == null) wordToMeaning[k] = String(w.meaning || "");
@@ -2200,11 +2202,12 @@ function buildQuestion(mode, pool) {
   const correct = mode === "en2ja" ? (target.meaning || "") : target.word;
 
   // distractors
-  const others = poolWords.filter(w => w.id !== target.id);
+  // Prefer choices from the selected category, then fill from the whole notebook.
+  const others = [...choiceShuffle(poolWords.filter(w => w.id !== target.id)), ...choiceShuffle(allWords.filter(w => w.id !== target.id && !poolWords.some(p => p.id === w.id)))];
   const seen = new Set([correct]);
   const distract = [];
   const keyOf = (w) => mode === "en2ja" ? (w.meaning || "") : (w.word || "");
-  const shuffled = choiceShuffle(others);
+  const shuffled = others;
 
   for (const w of shuffled) {
     const k = keyOf(w);
@@ -2216,7 +2219,7 @@ function buildQuestion(mode, pool) {
   }
 
   if (distract.length < 3) {
-    return { error: "4択の選択肢を作れませんでした（訳/単語の重複が多い可能性）。別カテゴリを選ぶか、単語数を増やしてください。" };
+    return { error: "4択の選択肢を作れませんでした（訳/単語の重複が多い可能性）。異なる意味・英単語を単語帳に追加してください。" };
   }
 
   const choices = choiceShuffle([correct, ...distract]);
@@ -2230,6 +2233,8 @@ function renderQuiz() {
   const nextBtn = document.getElementById("nextQuizBtn");
   if (!area || !score || !nextBtn) return;
 
+  // Keep the next button alive before replacing its parent quiz contents.
+  if (area.contains(nextBtn)) score.parentElement.insertBefore(nextBtn, score);
   score.textContent = `${quizState.correct} / ${quizState.total}`;
 
   if (!quizState.active || !quizState.current) {
