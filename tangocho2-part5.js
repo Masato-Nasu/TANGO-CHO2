@@ -19,11 +19,11 @@
 
   function statsHtml() {
     const stats = read(STATS_KEY, {words:{}, sessions:[]});
-    const all = Object.values(stats.words || {});
+    const all = [...Object.values(stats.words || {}),...Object.values(stats.grammar || {})];
     const attempts = all.reduce((n,w) => n + w.attempts, 0);
     const correct = all.reduce((n,w) => n + w.correct, 0);
     const ms = all.reduce((n,w) => n + w.ms, 0);
-    const weak = all.filter(w => w.correct < w.attempts && !w.weakDismissed)
+    const weak = Object.values(stats.words || {}).filter(w => w.correct < w.attempts && !w.weakDismissed)
       .sort((a,b) => a.correct/a.attempts - b.correct/b.attempts || b.ms/b.attempts - a.ms/a.attempts).slice(0,15);
     return `<div class="p5-stats"><div><b>${attempts ? Math.round(correct / attempts * 100) : '—'}${attempts ? '%' : ''}</b><span>累計正答率（${attempts}問）</span></div><div><b>${attempts ? (ms / attempts / 1000).toFixed(1) + '秒' : '—'}</b><span>平均回答時間</span></div></div>
       <h3>苦手語</h3>${lastDismissed ? `<p class="note" role="status">「${esc(lastDismissed)}」を一覧から外しました。 <button type="button" id="p5UndoWeak" class="ghost-btn">元に戻す</button></p>` : ''}${weak.length ? `<ul class="p5-weak">${weak.map(w => `<li><button type="button" class="p5-word-link" data-p5-word="${esc(w.word)}" aria-label="${esc(w.word)}の詳細を開く">${esc(w.word)}</button><span>${Math.round(w.correct/w.attempts*100)}% · ${w.attempts}問 · 平均${(w.ms/w.attempts/1000).toFixed(1)}秒</span><button type="button" class="ghost-btn p5-dismiss" data-p5-dismiss="${esc(w.word)}" aria-label="${esc(w.word)}を苦手語一覧から外す">一覧から外す</button></li>`).join('')}</ul>` : '<p class="note">不正解だった登録語がここに表示されます。</p>'}`;
@@ -190,6 +190,12 @@
     const q = session.questions[session.index];
     const correct = answer === q.answer;
     const stats = read(STATS_KEY, {words:{},sessions:[]});
+    if(q.grammarTopic){
+      const key=q.grammarTopic;stats.grammar ||= {};const entry=stats.grammar[key]||{attempts:0,correct:0,ms:0};
+      entry.attempts++;entry.correct+=Number(correct);entry.ms+=elapsed;stats.grammar[key]=entry;
+      localStorage.setItem(STATS_KEY,JSON.stringify(stats));
+      session.results.push({word:key,type:q.type,correct,ms:elapsed});return correct;
+    }
     const key = norm(q.word.word);
     const w = stats.words[key] || {word:q.word.word,attempts:0,correct:0,ms:0};
     w.attempts++; w.correct += Number(correct); w.ms += elapsed; w.lastAnsweredAt = new Date().toISOString();
@@ -217,18 +223,26 @@
 
   async function start() {
     if (generating || session) return;
-    const words = shuffle(vocabulary());
-    if (!words.length) { root.querySelector('#p5Message').textContent = '意味のある単語を単語帳に登録してから練習してください。'; return; }
-    const count = Number(root.querySelector('#p5Count').value);
     const mode = root.querySelector('#p5Mode').value;
+    const grammarMode = mode === 'CAUSATIVE' || mode === 'GRAMMAR';
+    const words = shuffle(vocabulary());
+    if (!grammarMode && !words.length) { root.querySelector('#p5Message').textContent = '意味のある単語を単語帳に登録してから練習してください。'; return; }
+    const count = Number(root.querySelector('#p5Count').value);
     const priority = root.querySelector('#p5Priority').checked;
     words.sort((a,b) => priority ? ((a.status === 'forgot' || a.status === 'fuzzy') ? 0 : 1) - ((b.status === 'forgot' || b.status === 'fuzzy') ? 0 : 1) : 0);
-    const selected = Array.from({length:count},(_,i) => words[i % words.length]);
+    const selected = grammarMode ? [] : Array.from({length:count},(_,i) => words[i % words.length]);
     generating = true;
     root.querySelector('#p5Start').disabled = true;
     root.querySelector('#p5Practice').innerHTML = '';
     try {
-      const {questions,notice} = await buildQuestions(selected, mode);
+      const answerSlots=grammarMode?shuffle(Array.from({length:count},(_,i)=>i%4)):[];
+      const {questions,notice} = grammarMode ? {
+        questions:window.TC2Grammar.create(count,mode==='CAUSATIVE'?'causative':'mixed').map((q,index)=>{
+          const options=shuffle(q.options.filter((_,i)=>i!==q.answer).map(text=>({text,correct:false})));
+          options.splice(answerSlots[index],0,{text:q.options[q.answer],correct:true});
+          return {...q,sentence:q.prompt,type:mode==='CAUSATIVE'?'使役動詞':'文法ミックス',grammarTopic:q.topic,options:options.map(o=>o.text),answer:options.findIndex(o=>o.correct)};
+        }),notice:'使役・複数形・時制のオリジナル問題です。解説で文型と誤答の理由を確認できます。'
+      } : await buildQuestions(selected, mode);
       session = {questions,index:0,results:[],mode};
       root.querySelector('#p5Message').textContent = notice || (words.length < count ? `登録語が${words.length}語のため、繰り返しを含めて${count}問練習します。` : '');
       root.querySelector('#p5End').hidden = false;
@@ -242,12 +256,15 @@
   function init() {
     root = document.getElementById('part5Section');
     if (!root) return;
-    root.innerHTML = `<div class="card"><h2>PART 5</h2><p class="note">登録語を使った英文穴埋め4択。好きなときに、何度でも。</p><div class="p5-controls"><label class="field-label">出題タイプ<select class="select" id="p5Mode"><option>VOCAB</option><option>WORD FORM</option><option>MIX</option></select></label><label class="field-label">練習する語数<select class="select" id="p5Count"><option value="5">5語</option><option value="10">10語</option><option value="30">30語</option></select></label></div><label class="p5-priority"><input type="checkbox" id="p5Priority" checked>「覚えてない」「うろ覚え」を優先</label><p class="note">初回の問題作成にはAI設定（BYOK）が必要です。作成済みの問題は再利用できます。成績は端末に保存され、単語帳の学習状態は自動変更しません。</p><div class="p5-actions"><button id="p5Start" class="primary-btn" type="button">練習を始める</button><button id="p5End" class="secondary-btn" type="button" hidden>ここまでの結果を見る</button></div><p id="p5Message" class="note" role="status"></p></div><div id="p5Practice"></div><div id="p5Stats" class="card"></div>`;
+    root.innerHTML = `<div class="card"><h2>PART 5</h2><p class="note">登録語の4択に加え、使役動詞・複数形・時制を練習できます。</p><div class="p5-controls"><label class="field-label">出題タイプ<select class="select" id="p5Mode"><option>VOCAB</option><option>WORD FORM</option><option>MIX</option><option value="GRAMMAR">文法ミックス · 使役・複数形・時制</option><option value="CAUSATIVE">使役動詞・引っ掛け</option></select></label><label class="field-label">練習する問題数<select class="select" id="p5Count"><option value="5">5問</option><option value="10">10問</option><option value="30">30問</option></select></label></div><label class="p5-priority"><input type="checkbox" id="p5Priority" checked>「覚えてない」「うろ覚え」を優先</label><p class="note">VOCAB・WORD FORM・MIXの初回作成にはAI設定（BYOK）が必要です。文法ミックスと使役動詞は登録語・APIキーなしで、オフラインでも練習できます。文法ミックスは使役動詞が5問中1問、ほかは複数形・時制です。作成済みの問題は再利用できます。成績は端末に保存され、単語帳の学習状態は自動変更しません。</p><div class="p5-actions"><button id="p5Start" class="primary-btn" type="button">練習を始める</button><button id="p5End" class="secondary-btn" type="button" hidden>ここまでの結果を見る</button></div><p id="p5Message" class="note" role="status"></p></div><div id="p5Practice"></div><div id="p5Stats" class="card"></div>`;
     const style = document.createElement('style');
     style.textContent = `#part5Section .p5-word-link{border:0;background:transparent;color:inherit;font:inherit;font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer;min-height:44px;padding:8px;text-align:left}#part5Section .p5-word-link:focus-visible{outline:2px solid currentColor;outline-offset:2px}#p5WordDetailSection .p5-detail-text{white-space:pre-wrap;overflow-wrap:anywhere}#p5WordDetailSection h2{overflow-wrap:anywhere}#part5Section .p5-controls{display:flex;gap:12px;flex-wrap:wrap}#part5Section .p5-controls label{flex:1;min-width:130px}#part5Section .p5-priority{display:flex;align-items:center;gap:8px;margin:16px 0;line-height:1.6}#part5Section .p5-actions{display:flex;gap:10px;flex-wrap:wrap}#part5Section .p5-sentence{font-size:1.18rem;line-height:1.8;overflow-wrap:anywhere}#part5Section .p5-options{display:grid;gap:10px}#part5Section .p5-options button{text-align:left;white-space:normal;overflow-wrap:anywhere;padding:14px}#part5Section .p5-options button:disabled{opacity:1}#part5Section .p5-options [data-result="correct"]{border:2px solid #168061;background:#e5f6ed}#part5Section .p5-options [data-result="wrong"]{border:2px solid #b34837;background:#fbece8}#part5Section #p5Feedback{white-space:pre-wrap;line-height:1.7;margin:16px 0}#part5Section .p5-stats{display:flex;gap:20px;flex-wrap:wrap}#part5Section .p5-stats b{display:block;font-size:1.7rem}#part5Section .p5-stats span,#part5Section .p5-label{font-size:.85rem;color:var(--muted,#666)}#part5Section .p5-weak{list-style:none;padding:0}#part5Section .p5-weak li{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid #e6e1d8}#part5Section .p5-weak li span{font-size:.85rem}#part5Section .p5-dismiss{font-size:.8rem;min-height:44px;padding:8px 12px;margin-left:auto}#part5Section [hidden]{display:none!important}`;
     document.head.appendChild(style);
     root.querySelector('#p5Start').addEventListener('click', start);
     root.querySelector('#p5End').addEventListener('click', finish);
+    root.querySelector('#p5Mode').addEventListener('change',()=>{
+      root.querySelector('#p5Priority').disabled=['CAUSATIVE','GRAMMAR'].includes(root.querySelector('#p5Mode').value);
+    });
     document.querySelector('[data-section="part5Section"]').addEventListener('click', renderStats);
     // Core tab navigation captured sections before a fallback detail page existed.
     document.addEventListener('click', ev => {

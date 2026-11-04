@@ -13,6 +13,7 @@ async function init(type='wifi',storage={},failAt=0){
  w.eval(fs.readFileSync(path.join(repo,'script.js'),'utf8').replace('document.addEventListener("DOMContentLoaded", () => {','document.addEventListener("core-init-disabled", () => {'));
  w.eval('setupTabs();setupAddForm();ensureAiSettingsLoaded=async()=>({});getOpenAiApiKey=()=>"test-placeholder";');
  let calls=[];w.callOpenAiJson=async args=>{const data=JSON.parse(args.input);calls.push(data);if(calls.length===failAt)throw new Error('AI unavailable');return fixture(data.type,calls.length);};
+ w.eval(fs.readFileSync(path.join(repo,'tangocho2-grammar.js'),'utf8'));
  w.eval(fs.readFileSync(path.join(repo,'tangocho2-commute.js'),'utf8'));await tick();
  return {dom,w,d,calls,connection,snapshot:()=>Object.fromEntries(Object.keys(w.localStorage).map(k=>[k,w.localStorage.getItem(k)]))};
 }

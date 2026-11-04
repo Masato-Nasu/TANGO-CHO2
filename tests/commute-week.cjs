@@ -8,6 +8,7 @@ async function init(storage={}){
  w.HTMLElement.prototype.scrollIntoView=function(){};
  for(const [key,value]of Object.entries(storage))w.localStorage.setItem(key,value);
  w.eval(fs.readFileSync(path.join(repo,'script.js'),'utf8').replace('document.addEventListener("DOMContentLoaded", () => {','document.addEventListener("core-init-disabled", () => {'));w.eval('setupTabs();setupAddForm();');
+ w.eval(fs.readFileSync(path.join(repo,'tangocho2-grammar.js'),'utf8'));
  w.eval(fs.readFileSync(path.join(repo,'tangocho2-commute.js'),'utf8'));await new Promise(r=>setTimeout(r,0));return {dom,w,d};
 }
 (async()=>{

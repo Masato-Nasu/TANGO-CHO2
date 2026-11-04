@@ -12,6 +12,7 @@ async function init(storage={}) {
  for(const [k,v] of Object.entries(storage)) w.localStorage.setItem(k,v);
  w.eval(fs.readFileSync(path.join(repo,'script.js'),'utf8').replace('document.addEventListener("DOMContentLoaded", () => {','document.addEventListener("core-init-disabled", () => {'));
  w.eval('setupTabs();setupAddForm();');
+ w.eval(fs.readFileSync(path.join(repo,'tangocho2-grammar.js'),'utf8'));
  w.eval(fs.readFileSync(path.join(repo,'tangocho2-commute.js'),'utf8'));
  await tick();
  return {dom,w,d:w.document};
