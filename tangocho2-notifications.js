@@ -2,10 +2,12 @@
 (() => {
   'use strict';
   const KEY='tangoCho2Push:v1';
+  const DEFAULT_SERVER='https://tangocho2-notifications.1bitexist.workers.dev';
   let state={};try{state=JSON.parse(localStorage.getItem(KEY)||'{}');}catch{}
   if(!state||typeof state!=='object'||Array.isArray(state))state={};
   const normalizeTimes=times=>Array.isArray(times)&&times.length>=1&&times.length<=6&&times.every(t=>typeof t==='string'&&/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(t))?[...new Set(times)].sort():null;
   state.times=normalizeTimes(state.times)||['08:45','18:15'];
+  if(typeof state.server!=='string'||!state.server.trim())state.server=DEFAULT_SERVER;
   let config=null,root,busy=false;
   function renderTimes(){
     const list=root.querySelector('#tc2PushTimes');list.replaceChildren();
@@ -27,7 +29,7 @@
     try{
       const times=readTimes();
       if(state.id){
-        if(config?.scheduleVersion!==2)throw new Error('配信サーバーの更新が必要です。初回設定の手順で更新してください。');
+        if(config?.scheduleVersion!==2)throw new Error('配信サーバーの更新が必要です。接続先の詳細の手順で更新してください。');
         await api(`/subscriptions/${state.id}`,{method:'PUT',body:{times},auth:true});
       }
       state.times=times;save();renderTimes();msg(state.id?'通知時刻を変更しました。':'通知時刻を保存しました。配信には通知の有効化が必要です。');
@@ -60,7 +62,7 @@
           const times=normalizeTimes(schedule.times);if(times){state.times=times;renderTimes();}
         }
         save();
-        msg(config.scheduleVersion!==2?'配信サーバーの更新が必要です。初回設定の手順で更新してください。':state.id?'通知サーバーに接続しました。':'接続しました。「通知を有効にする」を押してください。');
+        msg(config.scheduleVersion!==2?'配信サーバーの更新が必要です。接続先の詳細の手順で更新してください。':state.id?'通知サーバーに接続しました。':'接続しました。「通知を有効にする」を押してください。');
       }catch(e){state.server=previous;config=null;throw e;}
     }catch(e){msg(e.message||'接続できませんでした。');}
     finally{busy=false;refresh();}
@@ -68,9 +70,9 @@
   function bytes(key){const raw=atob(key.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-key.length%4)%4));return Uint8Array.from(raw,c=>c.charCodeAt(0));}
   function availability(){
     if(!supports())return 'このブラウザでは通知を利用できません。AndroidのChrome、またはホーム画面へ追加したiPhoneアプリで開いてください。';
-    if(!state.server&&!config)return '通知の配信準備が必要です。配信サーバーの初回公開と、下の「初回設定」での接続が済むまで通知は届きません。時刻は先に保存できます。';
-    if(!config)return busy?'通知サーバーへの接続を確認しています…':'通知サーバーに接続できていません。「初回設定」で配信先URLを確認し、接続してください。';
-    if(config.scheduleVersion!==2)return '通知サーバーの更新が必要です。初回設定の手順で配信サーバーを更新してください。';
+    if(!state.server&&!config)return '通知の配信準備が必要です。配信サーバーの初回公開と、下の「接続先の詳細」での接続が済むまで通知は届きません。時刻は先に保存できます。';
+    if(!config)return busy?'通知サーバーへの接続を確認しています…':'通知サーバーに接続できていません。「接続先の詳細」で配信先URLを確認し、接続してください。';
+    if(config.scheduleVersion!==2)return '通知サーバーの更新が必要です。接続先の詳細の手順で配信サーバーを更新してください。';
     if(Notification.permission==='denied')return 'スマホ側でこのサイトの通知がブロックされています。ブラウザのサイト設定で通知を許可してください。';
     return state.id?'通知を登録済みです。テスト通知で受信を確認できます。':'配信先に接続しました。「通知を有効にする」を押すとスマホの通知許可へ進みます。';
   }
@@ -133,7 +135,7 @@
   function init(){
     const host=document.querySelector('#commuteSection > .card');if(!host)return;
     root=document.createElement('details');root.className='card';
-    root.innerHTML='<summary>学習通知</summary><p id="tc2PushState"></p><p class="note">アプリを閉じていても練習時刻をお知らせします。通知をタップすると通勤練習を開きます。通信状況や省電力設定で遅れることがあります。iPhoneではホーム画面へ追加したアプリから設定してください。</p><p class="note">通知時刻（日本時間・毎日／最大6回）</p><div id="tc2PushTimes"></div><button class="ghost-btn" type="button" id="tc2PushAddTime">時刻を追加</button><button class="secondary-btn" type="button" id="tc2PushSaveTimes">時刻を保存</button><details id="tc2PushSetup"><summary>初回設定</summary><label class="field-label" for="tc2PushServer">配信先URL</label><input type="url" id="tc2PushServer" placeholder="https://tangocho2-notifications.…workers.dev" autocomplete="off"><button class="secondary-btn" type="button" id="tc2PushConnect">接続</button><p class="note">配信先の初回準備はPCで行います。<a href="https://github.com/Masato-Nasu/TANGO-CHO2/tree/main/notifications" target="_blank" rel="noopener">設定手順</a></p></details><p id="tc2PushAvailability" class="note" role="status"></p><button class="primary-btn" type="button" id="tc2PushEnable">通知を有効にする</button><button class="ghost-btn" type="button" id="tc2PushTest">テスト通知</button><button class="ghost-btn" type="button" id="tc2PushDisable">通知を解除</button><p id="tc2PushMsg" role="status"></p>';
+    root.innerHTML='<summary>学習通知</summary><p id="tc2PushState"></p><p class="note">アプリを閉じていても練習時刻をお知らせします。通知をタップすると通勤練習を開きます。通信状況や省電力設定で遅れることがあります。iPhoneではホーム画面へ追加したアプリから設定してください。</p><p class="note">通知時刻（日本時間・毎日／最大6回）</p><div id="tc2PushTimes"></div><button class="ghost-btn" type="button" id="tc2PushAddTime">時刻を追加</button><button class="secondary-btn" type="button" id="tc2PushSaveTimes">時刻を保存</button><details id="tc2PushSetup"><summary>接続先の詳細</summary><label class="field-label" for="tc2PushServer">配信先URL</label><input type="url" id="tc2PushServer" placeholder="https://tangocho2-notifications.1bitexist.workers.dev" autocomplete="off"><button class="secondary-btn" type="button" id="tc2PushConnect">接続</button><p class="note">配信先は設定済みです。通常は変更不要です。<a href="https://github.com/Masato-Nasu/TANGO-CHO2/tree/main/notifications" target="_blank" rel="noopener">設定手順</a></p></details><p id="tc2PushAvailability" class="note" role="status"></p><button class="primary-btn" type="button" id="tc2PushEnable">通知を有効にする</button><button class="ghost-btn" type="button" id="tc2PushTest">テスト通知</button><button class="ghost-btn" type="button" id="tc2PushDisable">通知を解除</button><p id="tc2PushMsg" role="status"></p>';
     host.after(root);renderTimes();
     root.querySelector('#tc2PushSetup').open=!state.server;
     root.querySelector('#tc2PushSaveTimes').addEventListener('click',saveTimes);
@@ -153,7 +155,7 @@
     root.querySelector('#tc2PushTest').addEventListener('click',test);
     root.querySelector('#tc2PushDisable').addEventListener('click',disable);
     if(!supports())msg('このブラウザでは通知を利用できません。AndroidのChrome、またはホーム画面へ追加したiPhoneアプリから開いてください。');
-    else if(!state.server)msg('通知はまだ有効になっていません。初回設定が必要です。');
+    else if(!state.server)msg('通知はまだ有効になっていません。接続先の詳細が必要です。');
     if(state.server&&supports())connect();
     refresh();openPractice();window.addEventListener('hashchange',openPractice);
   }

@@ -12,7 +12,7 @@ const repo=path.resolve(__dirname,'..');
   Object.defineProperty(navigator,'serviceWorker',{value:{ready:Promise.resolve(registration),register:async()=>registration}});
  });
  const calls=[];
- await page.route('https://notify-test.workers.dev/**',async r=>{
+ await page.route('https://*.workers.dev/**',async r=>{
   const url=new URL(r.request().url()),method=r.request().method();calls.push({path:url.pathname,method,body:method==='POST'||method==='PUT'?r.request().postDataJSON():null,auth:r.request().headers().authorization});
   if(url.pathname==='/config')return r.fulfill({json:{service:'tangocho2-notifications',publicKey:'B'.repeat(87),scheduleVersion:2,timezone:'Asia/Tokyo',times:['08:45','18:15']}});
   if(method==='PUT'&&url.pathname==='/subscriptions/abc'&&r.request().postDataJSON().times.includes('23:59'))return r.fulfill({status:503,json:{error:'保存失敗テスト'}});
@@ -21,8 +21,9 @@ const repo=path.resolve(__dirname,'..');
  });
  await page.goto('http://127.0.0.1:8796/#commute');await page.locator('#commuteSection.active').waitFor();
  await page.locator('#tc2PushState').evaluate(el=>el.closest('details').open=true);await page.locator('#tc2PushSetup').evaluate(el=>el.open=true);
- assert((await page.locator('#tc2PushAvailability').innerText()).includes('配信準備が必要'));assert(await page.locator('#tc2PushSetup').evaluate(el=>el.open));assert((await page.locator('#tc2PushEnable').innerText()).includes('配信の準備'));
- assert(await page.locator('#tc2PushEnable').isDisabled());assert.equal(await page.evaluate(()=>permissionRequests),0);
+ await page.waitForFunction(()=>!document.getElementById('tc2PushEnable').disabled);
+ assert.equal(await page.locator('#tc2PushServer').inputValue(),'https://tangocho2-notifications.1bitexist.workers.dev');
+ assert((await page.locator('#tc2PushAvailability').innerText()).includes('配信先に接続しました'));assert.equal(await page.evaluate(()=>permissionRequests),0);
  await page.locator('#tc2PushServer').fill('https://notify-test.workers.dev');await page.locator('#tc2PushConnect').click();await page.waitForFunction(()=>!document.getElementById('tc2PushEnable').disabled);assert.equal(await page.evaluate(()=>permissionRequests),0);
  await page.locator('[data-push-time]').nth(0).fill('07:20');await page.locator('[data-push-time]').nth(1).fill('19:30');
  await page.locator('#tc2PushSaveTimes').click();await page.waitForFunction(()=>document.getElementById('tc2PushState').textContent.includes('07:20'));
