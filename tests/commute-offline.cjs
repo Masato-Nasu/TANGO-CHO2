@@ -27,7 +27,7 @@ async function init(type='wifi',storage={},failAt=0){
  const storage2=a.snapshot();a.dom.window.close();a=await init('wifi',storage2);await new Promise(r=>setTimeout(r,130));assert.equal(a.calls.length,0,'active prepared set counts toward the two-set limit');
  a.connection.type='offline';a.w.dispatchEvent(new a.w.Event('offline'));
  for(let group=0;group<3;group++){
-  for(let i=0;i<(group===0?3:5);i++){const radio=a.d.querySelector(`[name="commuteQ${i}"][value="0"]`);radio.checked=true;radio.dispatchEvent(new a.w.Event('change',{bubbles:true}));}
+  for(let i=0;i<(group===0?3:5);i++){const current=JSON.parse(a.w.localStorage.getItem(S));const radio=a.d.querySelector(`[name="commuteQ${i}"][value="${current.groups[current.index].questions[i].answer}"]`);radio.checked=true;radio.dispatchEvent(new a.w.Event('change',{bubbles:true}));}
   a.d.getElementById('commuteGrade').click();assert.equal(a.d.querySelectorAll('.commute-feedback').length,group===0?3:5);a.d.getElementById('commuteNext').click();
  }
  assert.match(a.d.getElementById('commutePractice').textContent,/13 \/ 13/);a.d.querySelector('[data-offline-start]').click();assert.notEqual(JSON.parse(a.w.localStorage.getItem(S)).id,active.id);assert.equal(a.calls.length,0);assert.equal(JSON.parse(a.w.localStorage.getItem(Q)).length,0);a.dom.window.close();

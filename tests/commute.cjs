@@ -37,9 +37,9 @@ const fixture = type => ({title:'Office update',passage:type==='Part 7'?Array(18
  assert.equal(d.querySelectorAll('.commute-question').length,3);
  assert.equal(d.querySelectorAll('.commute-feedback').length,0);
  d.getElementById('commuteGrade').click();assert.match(d.getElementById('commuteMsg').textContent,/すべて/);
- const choose=(i,value=0)=>{const radio=d.querySelector(`[name="commuteQ${i}"][value="${value}"]`);radio.checked=true;radio.dispatchEvent(new w.Event('change',{bubbles:true}));};
+ const choose=(i,value=JSON.parse(w.localStorage.getItem('tangoCho2Commute:v1')).groups[JSON.parse(w.localStorage.getItem('tangoCho2Commute:v1')).index].questions[i].answer)=>{const radio=d.querySelector(`[name="commuteQ${i}"][value="${value}"]`);radio.checked=true;radio.dispatchEvent(new w.Event('change',{bubbles:true}));};
  choose(0); const saved=Object.fromEntries(Object.keys(w.localStorage).map(k=>[k,w.localStorage.getItem(k)]));dom.window.close();
- ({dom,w,d}=await init(saved));assert(d.querySelector('[name="commuteQ0"][value="0"]').checked);assert.equal(d.getElementById('commuteLevel').value,'600');assert.match(d.getElementById('commutePractice').textContent,/600点/);
+ ({dom,w,d}=await init(saved));assert(d.querySelector('[name="commuteQ0"]:checked'));assert.equal(d.getElementById('commuteLevel').value,'600');assert.match(d.getElementById('commutePractice').textContent,/600点/);
  for(let group=0;group<3;group++){
   const count=group===0?3:5;
   for(let i=0;i<count;i++)choose(i);

@@ -12,8 +12,11 @@ const repo=path.resolve(__dirname,'..');
  assert.equal(await page.locator('.commute-feedback').count(),0);
  await page.locator('[name="commuteQ0"][value="0"]').check();await page.reload();await page.locator('[data-section="commuteSection"]').click();assert(await page.locator('[name="commuteQ0"][value="0"]').isChecked());
  for(let group=0;group<3;group++){
-  for(let i=0;i<(group===0?3:5);i++)await page.locator(`[name="commuteQ${i}"][value="0"]`).check();
-  await page.locator('#commuteGrade').click();assert.equal(await page.locator('.commute-feedback').count(),group===0?3:5);
+  for(let i=0;i<(group===0?3:5);i++){
+   const answer=await page.evaluate(i=>{const s=JSON.parse(localStorage.getItem('tangoCho2Commute:v1'));return s.groups[s.index].questions[i].answer;},i);
+   await page.locator(`[name="commuteQ${i}"][value="${answer}"]`).check();
+  }
+  await page.locator('#commuteGrade').click();assert((await page.locator('#commutePractice').boundingBox()).y>=-1);assert((await page.locator('#commutePractice').boundingBox()).y<100);assert.equal(await page.locator('.commute-feedback').count(),group===0?3:5);
   if(group===0){await page.locator('[data-commute-save]').first().click();assert.equal(await page.evaluate(()=>loadWords().filter(w=>w.word==='submit').length),1);await page.locator('#commuteSection').screenshot({path:'/tmp/tc2-commute-mobile.png'});}
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   await page.locator('#commuteNext').click();

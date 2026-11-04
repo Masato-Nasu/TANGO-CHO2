@@ -19,7 +19,10 @@ const repo=path.resolve(__dirname,'..');
  await context.setOffline(true);await page.reload();await page.locator('[data-section="commuteSection"]').click();assert.equal(await page.locator('[data-offline-start]').count(),2);assert.equal(await page.evaluate(()=>aiCalls),0);
  await page.locator('[data-offline-start]').first().click();
  for(let group=0;group<3;group++){
-  for(let i=0;i<(group===0?3:5);i++)await page.locator(`[name="commuteQ${i}"][value="0"]`).check();
+  for(let i=0;i<(group===0?3:5);i++){
+   const answer=await page.evaluate(i=>{const s=JSON.parse(localStorage.getItem('tangoCho2Commute:v1'));return s.groups[s.index].questions[i].answer;},i);
+   await page.locator(`[name="commuteQ${i}"][value="${answer}"]`).check();
+  }
   await page.locator('#commuteGrade').click();await page.locator('#commuteNext').click();
  }
  assert((await page.locator('#commutePractice').innerText()).includes('13 / 13'));await page.locator('[data-offline-start]').click();assert(await page.locator('[name="commuteQ0"]').first().isVisible());assert.equal(await page.evaluate(()=>aiCalls),0);assert.deepEqual(errors,[]);
