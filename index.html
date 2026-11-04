@@ -16,7 +16,7 @@
   <meta name="theme-color" content="#fffaf2" />
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="style.css?v=48.0.3" />
-  <link rel="stylesheet" href="tangocho2-layout-fix.css?v=0.5.0" />
+  <link rel="stylesheet" href="tangocho2-layout-fix.css?v=0.6.0" />
   <link rel="stylesheet" href="tangocho2-theme.css?v=0.3.0" data-tc2-theme="1" />
   <style>
     html{background:#fffaf2}
@@ -75,6 +75,7 @@
     <button class="tab-button" data-section="quizSection">クイズ</button>
     <button class="tab-button" data-section="fortuneSection">5 WORDS</button>
     <button class="tab-button" data-section="part5Section">PART 5</button>
+    <button class="tab-button" data-section="commuteSection">通勤練習</button>
   </nav>
 
   <main class="main">
@@ -297,6 +298,7 @@
         <div id="fortuneResults" class="fortune-results"></div>
       </div>
     </section>
+    <section id="commuteSection" class="section"></section>
     <section id="part5Section" class="section"></section>
     <section id="p5WordDetailSection" class="section" aria-label="単語の詳細"></section>
   </main>
@@ -308,10 +310,11 @@
   <script src="bank_enja.js"></script>
   <script src="vocab_pool.js"></script>
   <script src="tangocho2-storage-shim.js?v=0.2.0"></script>
-  <script src="script.js?v=48.0.9"></script>
+  <script src="script.js?v=48.0.10"></script>
   <script src="api-response-fix.js?v=48.0.7"></script>
   <script src="tangocho2-fivewords.js?v=0.11.0"></script>
   <script src="tangocho2-auto-register.js?v=0.6.0"></script>
+  <script src="tangocho2-commute.js?v=0.1.0"></script>
   <script src="tangocho2-part5.js?v=0.15.0"></script>
   <script src="tangocho2-study-time.js?v=0.2.0"></script>
   <script src="tangocho2-backup.js?v=0.13.0"></script>
@@ -319,7 +322,7 @@
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=0.27.0", { updateViaCache: 'none' })
+        navigator.serviceWorker.register("./service-worker.js?v=0.28.0", { updateViaCache: 'none' })
           .then(reg => reg.update()).catch(console.error);
       });
     }

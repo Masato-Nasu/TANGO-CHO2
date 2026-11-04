@@ -20,5 +20,5 @@ html body #fortuneSection .tc2-word[data-registered="1"]{
   }
 }
 
-/* Five tabs, including PART 5, stay in the existing navigation row. */
-.tab-bar:has([data-section="part5Section"]){grid-template-columns:repeat(5,minmax(0,1fr))!important;}
+/* Six legible touch targets, arranged in two rows. */
+.tab-bar:has([data-section="commuteSection"]){grid-template-columns:repeat(3,minmax(0,1fr))!important;}

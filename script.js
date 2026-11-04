@@ -1183,6 +1183,22 @@ function setupAddForm() {
   const editSub = document.getElementById("editSub");
   const cancelEditBtn = document.getElementById("cancelEditBtn");
 
+  // Derived fields belong to the selected term, never to the previous search.
+  let termRevision = 0;
+  const termKey = () => wordEl.value.trim().toLowerCase().replace(/\s+/g, ' ');
+  let lastTermKey = termKey();
+  function resetTermDetails() {
+    termRevision++;
+    [meaningEl, synonymsEl, exampleEl, exampleTranslationEl, memoEl].forEach(el => { if (el) el.value = ""; });
+    setState("未翻訳");
+    setMsg("", "");
+  }
+  wordEl.addEventListener('input', () => {
+    const key = termKey();
+    if (key !== lastTermKey) resetTermDetails();
+    lastTermKey = key;
+  });
+
   // Quick, unmistakable feedback on Save (especially when the message area is out of view).
   function flashSaveIndicator(isUpdate=false){
     try{
@@ -1204,6 +1220,8 @@ function setState(text) {
   }
 
   function clearForm(afterSave=false) {
+    termRevision++;
+    lastTermKey = "";
     wordEl.value = "";
     meaningEl.value = "";
     statusEl.value = "default";
@@ -1218,7 +1236,9 @@ function setState(text) {
 
   function enterEditMode(item) {
     editId = item.id;
+    termRevision++;
     wordEl.value = item.word || "";
+    lastTermKey = termKey();
     meaningEl.value = item.meaning || "";
     statusEl.value = item.status || "default";
     exampleEl.value = item.example || "";
@@ -1353,6 +1373,7 @@ document.addEventListener("tangocho:incomingword", (ev) => {
     randomBtn.addEventListener("click", () => {
       if (editId) return setMsg("編集中はランダムを使えません（編集を解除してください）。", "err");
 
+      resetTermDetails();
       // reset UI (do NOT auto-fetch synonyms)
       try { if (synonymsEl) synonymsEl.value = ""; } catch (_) {}
       try { meaningEl.value = ""; } catch (_) {}
@@ -1363,6 +1384,7 @@ document.addEventListener("tangocho:incomingword", (ev) => {
       if (!picked) return setMsg("ランダム候補が見つかりません。", "err");
 
       wordEl.value = picked;
+      lastTermKey = termKey();
       __lastWordFromRandom = true;
       wordEl.focus();
     });
@@ -1383,10 +1405,12 @@ document.addEventListener("tangocho:incomingword", (ev) => {
       wordEl.value = w;
     }
 
+    const revision = termRevision;
     setMsg("翻訳中...", "");
     setState("翻訳中");
     try {
       const ja = await translateToJaViaSpace(w);
+      if (revision !== termRevision || termKey() !== w.toLowerCase()) return;
 
       const jaTrim = String(ja||"").trim();
       // If translation is empty or unchanged, treat as not suitable for learning.
@@ -1398,7 +1422,9 @@ document.addEventListener("tangocho:incomingword", (ev) => {
           // Show another candidate (no extra buttons, just recover gracefully)
           const picked = pickRandomWord();
           if (picked) {
+            resetTermDetails();
             wordEl.value = picked;
+            lastTermKey = termKey();
             setMsg("この単語は翻訳できない可能性があるため、別の候補に切り替えました。", "ok");
             wordEl.focus();
             return;
@@ -1412,6 +1438,7 @@ document.addEventListener("tangocho:incomingword", (ev) => {
       setState("翻訳済み");
       __lastWordFromRandom = false;
     } catch (e) {
+      if (revision !== termRevision) return;
       setMsg(String(e.message || e), "err");
       setState("失敗");
     }
@@ -1420,8 +1447,10 @@ document.addEventListener("tangocho:incomingword", (ev) => {
   async function fillSynonymsIfEmpty(word) {
     if (!synonymsEl) return;
     if (synonymsEl.value.trim()) return; // don't overwrite user input
+    const revision = termRevision;
     try {
       const syns = await getSynonymsSmart(word, 8);
+      if (revision !== termRevision || termKey() !== word.toLowerCase() || synonymsEl.value.trim()) return;
       if (syns.length) {
         synonymsEl.value = syns.slice(0, 8).join(", ");
         setMsg(`類義語を自動取得しました（${Math.min(8, syns.length)}件）。`, "ok");
@@ -1441,8 +1470,11 @@ document.addEventListener("tangocho:incomingword", (ev) => {
       const w = normalizeWordInput(phrase);
       if (!w) return setMsg("英語（アルファベット）を入力してください。", "err");
       if (String(raw||"").trim().toLowerCase() !== w) wordEl.value = w;
+      const revision = termRevision;
+      const originalSynonyms = synonymsEl.value;
       try {
         const syns = await getSynonymsSmart(w, 8);
+        if (revision !== termRevision || termKey() !== w.toLowerCase() || synonymsEl.value !== originalSynonyms) return;
         synonymsEl.value = syns.slice(0, 8).join(", ");
         if (syns.length) {
           setMsg(`類義語を取得しました（${Math.min(8, syns.length)}件）。`, "ok");
@@ -1451,6 +1483,7 @@ document.addEventListener("tangocho:incomingword", (ev) => {
         }
       } catch (e) {
 
+        if (revision !== termRevision) return;
         setMsg(String(e && e.message ? e.message : "類義語の取得に失敗しました。"), "err");
       }
     });
@@ -1464,6 +1497,7 @@ document.addEventListener("tangocho:incomingword", (ev) => {
     const term = __isSingleWordTerm(phrase) ? (normalizeWordInput(phrase) || phrase) : phrase;
     if (String(raw || "").trim() !== term) wordEl.value = term;
 
+    const revision = termRevision;
     const previousText = aiAssistBtn.textContent;
     aiAssistBtn.disabled = true;
     aiAssistBtn.textContent = "AIで補完中…";
@@ -1471,7 +1505,7 @@ document.addEventListener("tangocho:incomingword", (ev) => {
     try {
       const originalExample = exampleEl.value.trim();
       const result = await enrichTermViaAi(term, originalExample);
-      if (wordEl.value.trim() !== term || exampleEl.value.trim() !== originalExample) return;
+      if (revision !== termRevision || wordEl.value.trim() !== term || exampleEl.value.trim() !== originalExample) return;
       let filled = 0;
       if (!meaningEl.value.trim() && result.meaning) { meaningEl.value = result.meaning; filled++; setState("AI補完済み"); }
       if (synonymsEl && !synonymsEl.value.trim() && result.synonyms.length) { synonymsEl.value = result.synonyms.join(", "); filled++; }
@@ -1482,7 +1516,7 @@ document.addEventListener("tangocho:incomingword", (ev) => {
       else setMsg("入力済みの項目は上書きしませんでした。空欄を作って再度お試しください。", "ok");
       __lastWordFromRandom = false;
     } catch (e) {
-      setMsg(String(e?.message || e), "err");
+      if (revision === termRevision) setMsg(String(e?.message || e), "err");
     } finally {
       aiAssistBtn.disabled = false;
       aiAssistBtn.textContent = previousText;
