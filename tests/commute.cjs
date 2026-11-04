@@ -55,9 +55,9 @@ const fixture = type => ({title:'Office update',passage:type==='Part 7'?Array(18
  d.getElementById('commuteResume').click();assert.equal(d.querySelectorAll('.commute-feedback').length,3);
  for(let i=0;i<3;i++)d.getElementById('commuteReviewNext').click();
  assert.equal(JSON.parse(w.localStorage.getItem('tangoCho2CommuteHistory:v1')).length,1);
- w.confirm=()=>true;d.getElementById('commuteMode').value='Part 5';
  for(const level of [700,800,900]){
-   d.getElementById('commuteLevel').value=String(level);
+   dom.window.close();({dom,w,d}=await init({'tangoCho2CommuteLevel:v1':JSON.stringify(level),'tangoCho2CommuteAutoPrepare:v1':'false'}));
+   d.getElementById('commuteMode').value='Part 5';
    w.callOpenAiJson=async args=>{assert.equal(JSON.parse(args.input).level,level);assert(args.instruction.includes(`targeting TOEIC ${level}`));assert(!args.instruction.includes('scoring 855'));return fixture('Part 5');};
    d.getElementById('commuteStart').click();await tick();await tick();assert.equal(JSON.parse(w.localStorage.getItem('tangoCho2Commute:v1')).level,level);
  }
