@@ -53,7 +53,7 @@ const fixture = type => ({title:'Office update',passage:type==='Part 7'?Array(18
  assert.match(d.getElementById('commutePractice').textContent,/13 \/ 13/);
  assert.equal(JSON.parse(w.localStorage.getItem('tangoCho2CommuteHistory:v1')).length,1);
  d.getElementById('commuteResume').click();assert.equal(d.querySelectorAll('.commute-feedback').length,3);
- for(let i=0;i<3;i++)d.getElementById('commuteNext').click();
+ for(let i=0;i<3;i++)d.getElementById('commuteReviewNext').click();
  assert.equal(JSON.parse(w.localStorage.getItem('tangoCho2CommuteHistory:v1')).length,1);
  w.confirm=()=>true;d.getElementById('commuteMode').value='Part 5';
  for(const level of [700,800,900]){

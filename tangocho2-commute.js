@@ -2,6 +2,7 @@
 (() => {
   'use strict';
   const KEY = 'tangoCho2Commute:v1';
+  const ARCHIVE = 'tangoCho2CommuteArchive:v1';
   const HISTORY = 'tangoCho2CommuteHistory:v1';
   const RECENT = 'tangoCho2CommuteRecent:v1';
   const QUEUE_KEY = 'tangoCho2CommuteQueue:v1';
@@ -18,6 +19,7 @@
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const read = (k, fallback) => { try { return JSON.parse(localStorage.getItem(k)) ?? fallback; } catch { return fallback; } };
   let root, session = null, busy = false, queue = [], autoAttempted = false;
+  let reviewItem = null, reviewIndex = 0;
   let autoEnabled = read(AUTO_KEY, true) !== false;
   const str = {type:'string'};
   const termSchema = {type:'object',additionalProperties:false,properties:{word:str,meaning:str,pronunciation:str,collocation:str,example:str,translation:str},required:['word','meaning','pronunciation','collocation','example','translation']};
@@ -141,21 +143,62 @@
     if (busy || session && !session.complete) return;
     const stored = queue.find(item => item.id === id); if (!stored) return;
     const item = distributeAnswers(stored);
+    if (!archiveSession(session)) return;
     const previous = session; session = item;
     if (!persist()) { session = previous; return; }
     try { saveQueue(queue.filter(item => item.id !== id)); }
     catch { queue = queue.filter(item => item.id !== id); }
     message('保存済みの問題です。オフラインで解答・採点できます。');
     render(); networkMessage();
+    root.querySelector('#commutePractice').scrollIntoView({block:'start'});
   }
   function persist() {
     try { localStorage.setItem(KEY, JSON.stringify(session)); return true; }
     catch { message('途中経過を保存できませんでした。この画面では続けて解答できます。'); return false; }
   }
   function message(s) { root.querySelector('#commuteMsg').textContent = s; }
+  function weekCutoff(now = Date.now()) {
+    const day=86400000,offset=9*3600000;
+    return Math.floor((now+offset)/day)*day-offset-6*day;
+  }
+  function archiveItems() {
+    const raw=read(ARCHIVE,[]),cutoff=weekCutoff();
+    return (Array.isArray(raw)?raw:[]).filter(item=>validSession(item?.session)&&Number.isFinite(Date.parse(item.at))&&Date.parse(item.at)>=cutoff&&Date.parse(item.at)<=Date.now()).sort((a,b)=>Date.parse(b.at)-Date.parse(a.at));
+  }
+  function archiveSession(item, legacyAt) {
+    if (!item?.groups?.some(group=>group.graded)) return true;
+    try {
+      const items=archiveItems(),existing=items.find(entry=>entry.id===item.id);
+      const at=item.completedAt||existing?.at||item.answeredAt||legacyAt||new Date().toISOString();
+      const next=items.filter(entry=>entry.id!==item.id);
+      if(Date.parse(at)>=weekCutoff())next.push({id:item.id,at,session:JSON.parse(JSON.stringify(item))});
+      localStorage.setItem(ARCHIVE,JSON.stringify(next));
+      const status=root.querySelector('#commuteArchiveStatus');if(status)status.textContent='';
+      return true;
+    } catch { const warning='1週間分の回答を保存できませんでした。端末の空き容量を確認してください。現在の問題は残しています。';message(warning);const status=root.querySelector('#commuteArchiveStatus');if(status)status.textContent=warning;return false; }
+  }
   function history() {
-    const items = read(HISTORY, []);
-    root.querySelector('#commuteHistory').textContent = items.slice(-5).reverse().map(x => `${new Date(x.at).toLocaleDateString('ja-JP')} · ${x.correct}/${x.total}問 · ${levelOf(x.level)}点`).join(' ／ ');
+    const items=archiveItems();
+    root.querySelector('#commuteHistory').innerHTML=items.length?items.map(item=>{
+      const all=item.session.groups.flatMap(group=>group.questions);
+      const answered=item.session.groups.filter(group=>group.graded).flatMap(group=>group.questions);
+      const correct=answered.filter(q=>q.choice===q.answer).length;
+      const date=new Date(item.at).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
+      return `<button type="button" class="secondary-btn commute-history-item" data-history-open="${esc(item.id)}">${esc(date)} · ${levelOf(item.session.level)}点 · ${correct}/${answered.length}問 正解${item.session.complete?'':`（途中・全${all.length}問）`} · 振り返る</button>`;
+    }).join(''):'<p class="note">採点した回答がここに表示されます。</p>';
+  }
+  function renderReview() {
+    const area=root.querySelector('#commuteReview');
+    area.hidden=!reviewItem;if(!reviewItem){area.replaceChildren();delete area.dataset.commuteReviewId;return;}
+    const item=reviewItem.session,g=item.groups[reviewIndex];
+    area.dataset.commuteReviewId=item.id;area.dataset.reviewGroup=String(reviewIndex);
+    area.innerHTML=`<button type="button" class="ghost-btn" id="commuteReviewClose">振り返りを閉じる</button><h3>回答の振り返り · ${levelOf(item.level)}点 · ${esc(g.type)}</h3><div class="field-row">${item.groups.map((group,i)=>`<button type="button" class="${i===reviewIndex?'primary-btn':'ghost-btn'}" data-review-group="${i}" aria-pressed="${i===reviewIndex}">${esc(group.type)}</button>`).join('')}</div><p>${esc(g.title)}</p>${g.passage?`<article class="commute-passage" lang="en">${esc(g.passage)}</article>`:''}${g.questions.map((q,i)=>`<section class="commute-question"><h4>${i+1}. <span class="commute-review-prompt">${esc(q.prompt)}</span></h4><p><strong>${g.graded?(q.choice===q.answer?'正解':'不正解'):'未採点'}</strong> · 自分の回答：${q.choice===null?'未回答':`${'ABCD'[q.choice]}. ${esc(q.options[q.choice])}`}</p><ol type="A" class="commute-review-options">${q.options.map((text,j)=>`<li class="${g.graded&&j===q.answer?'commute-correct':g.graded&&j===q.choice?'commute-wrong':''}"><span>${esc(text)}</span>${g.graded&&j===q.answer?' ✓ 正解':''}${j===q.choice?' ← 自分の回答':''}</li>`).join('')}</ol>${g.graded?`<div class="commute-feedback"><p>正答：${'ABCD'[q.answer]}. ${esc(q.options[q.answer])}</p><p>${esc(q.translation)}</p><p>${esc(q.explanation)}</p>${q.terms.map((t,j)=>`<div class="commute-term"><strong>${esc(t.word)}</strong> / ${esc(t.pronunciation)}<br>${esc(t.meaning)}<br>${esc(t.example)}<br>${esc(t.translation)}<br>コロケーション：${esc(t.collocation)}<br><button type="button" class="ghost-btn" data-review-save="${i}:${j}">${registered(t.word)?'登録済み':'単語帳に登録'}</button><button type="button" class="ghost-btn" data-review-speak="${i}:${j}">🔊 発音</button></div>`).join('')}</div>`:''}</section>`).join('')}${g.graded&&g.passageTranslation?`<details><summary>英文全体の日本語訳</summary><p class="commute-passage">${esc(g.passageTranslation)}</p></details>`:''}<button type="button" class="secondary-btn" id="commuteReviewNext">${reviewIndex+1===item.groups.length?'振り返りを閉じる':'次のパート'}</button>`;
+  }
+  function openReview(id) {
+    reviewItem=archiveItems().find(item=>item.id===id)||null;
+    if(!reviewItem&&session?.id===id)reviewItem={id,at:session.completedAt||session.answeredAt||new Date().toISOString(),session:JSON.parse(JSON.stringify(session))};
+    if(!reviewItem){message('この回答は保存期間を過ぎているか、内容が保存されていません。');return;}
+    reviewIndex=0;renderReview();root.querySelector('#commuteReview').scrollIntoView({block:'start'});
   }
   function render() {
     const area = root.querySelector('#commutePractice');
@@ -195,6 +238,7 @@
   async function start() {
     if (busy) return;
     if (session && !session.complete && !confirm('練習中の問題を新しい問題に入れ替えますか？')) return;
+    if (!archiveSession(session)) return;
     busy = true; renderQueue();
     const mode = root.querySelector('#commuteMode').value;
     const level = levelOf(root.querySelector('#commuteLevel').value);
@@ -202,6 +246,7 @@
     try {
       session = await buildSession(mode === 'all' ? TYPES : [mode], level);
       persist(); message('各パートを解答してから採点します。途中経過はこの端末に保存します。'); render();
+      root.querySelector('#commutePractice').scrollIntoView({block:'start'});
     } catch(e) { message(e.message || '問題を作れませんでした。AI設定を確認してください。'); }
     finally { busy = false; renderQueue(); }
   }
@@ -215,9 +260,9 @@
     const storedQueue = read(QUEUE_KEY, []);
     queue = Array.isArray(storedQueue) ? storedQueue.filter(item => validSession(item) && !item.complete && item.id !== session?.id).slice(0,2).map(distributeAnswers) : [];
     if (queue.some((item,index) => item !== storedQueue[index])) { try { localStorage.setItem(QUEUE_KEY, JSON.stringify(queue)); } catch {} }
-    root.innerHTML = `<div class="card"><h2>通勤練習</h2><p class="note">目標に合わせた新しい問題で、読解・文法・語彙を練習。</p><label class="field-label" for="commuteLevel">目標レベル</label><select class="select" id="commuteLevel">${Object.keys(LEVELS).map(level => `<option value="${level}">${level}点</option>`).join('')}</select><p class="note">レベル変更は次に作る問題から反映されます。</p><label class="field-label" for="commuteMode">出題内容</label><select class="select" id="commuteMode"><option value="all">全部 · 13問</option>${TYPES.map(t => `<option>${t}</option>`).join('')}</select><p class="note">全部：Part 7 英文1つ＋3問 ／ Part 5 5問 ／ 語彙5問。作成には設定済みのOpenAI APIキーを使います。作成後はオフラインでも解答できます。</p><button class="primary-btn" type="button" id="commuteStart">新しい問題を作る</button><button class="ghost-btn" type="button" id="commuteResume" hidden>解答を振り返る</button><p id="commuteMsg" role="status"></p><p id="commuteHistory" class="note"></p></div><div class="card"><h3>オフライン用の問題</h3><label class="field-row"><input id="commuteAutoPrepare" type="checkbox" style="width:20px;height:20px">Wi-Fiで開いたとき、2回分を自動準備</label><p class="note">1回13問 × 2回分を端末に保存します。作成にはOpenAI APIを使います。画面を開いて準備完了をお待ちください。保存済みの問題のレベルは変わりません。</p><button type="button" class="secondary-btn" id="commutePrepare">Wi-Fiで2回分を準備</button><p id="commuteOfflineStatus" role="status"></p><div id="commuteOfflineList"></div><p class="note">解きかけの問題がある場合は、終了してから保存済みの次の問題を始められます。</p></div><div id="commutePractice"></div>`;
+    root.innerHTML = `<div class="card"><h2>通勤練習</h2><p class="note">目標に合わせた新しい問題で、読解・文法・語彙を練習。</p><label class="field-label" for="commuteLevel">目標レベル</label><select class="select" id="commuteLevel">${Object.keys(LEVELS).map(level => `<option value="${level}">${level}点</option>`).join('')}</select><p class="note">レベル変更は次に作る問題から反映されます。</p><label class="field-label" for="commuteMode">出題内容</label><select class="select" id="commuteMode"><option value="all">全部 · 13問</option>${TYPES.map(t => `<option>${t}</option>`).join('')}</select><p class="note">全部：Part 7 英文1つ＋3問 ／ Part 5 5問 ／ 語彙5問。作成には設定済みのOpenAI APIキーを使います。作成後はオフラインでも解答できます。</p><button class="primary-btn" type="button" id="commuteStart">新しい問題を作る</button><button class="ghost-btn" type="button" id="commuteResume" hidden>解答を振り返る</button><p id="commuteMsg" role="status"></p></div><div class="card"><h3>オフライン用の問題</h3><label class="field-row"><input id="commuteAutoPrepare" type="checkbox" style="width:20px;height:20px">Wi-Fiで開いたとき、2回分を自動準備</label><p class="note">1回13問 × 2回分を端末に保存します。作成にはOpenAI APIを使います。画面を開いて準備完了をお待ちください。保存済みの問題のレベルは変わりません。</p><button type="button" class="secondary-btn" id="commutePrepare">Wi-Fiで2回分を準備</button><p id="commuteOfflineStatus" role="status"></p><div id="commuteOfflineList"></div><p class="note">解きかけの問題がある場合は、終了してから保存済みの次の問題を始められます。</p></div><section class="card"><h3>直近1週間の回答</h3><p class="note">今日を含む7日分をこの端末に保存します（日本時間）。履歴を開いても練習中の回答は変わりません。</p><p id="commuteArchiveStatus" role="status"></p><div id="commuteHistory"></div><div id="commuteReview" hidden></div></section><div id="commutePractice"></div>`;
     const style = document.createElement('style');
-    style.textContent = `#commuteSection [hidden]{display:none!important}#commuteSection{overflow-wrap:anywhere}.commute-passage{white-space:pre-wrap;line-height:1.9;padding:14px;border:1px solid var(--border,#ccc);border-radius:12px;font-size:1.05rem}.commute-question{border:0;padding:18px 0;margin:12px 0}.commute-question legend{line-height:1.8;font-size:1.05rem}.commute-option{display:flex;align-items:center;gap:12px;padding:14px;margin:8px 0;border:1px solid var(--border,#ccc);border-radius:12px;cursor:pointer;min-height:48px}.commute-option input{width:20px;height:20px;flex-shrink:0}.commute-correct{background:#e5f6ed;color:#13513d;border-color:#168061}.commute-wrong{background:#fbece8;color:#782d20;border-color:#b34837}.commute-feedback{line-height:1.8}.commute-term{padding:14px 0;border-top:1px solid var(--border,#ccc)}#commuteSection button{min-height:44px;margin:6px 4px 6px 0}`;
+    style.textContent = `#commuteSection [hidden]{display:none!important}#commuteSection{overflow-wrap:anywhere}.commute-passage{white-space:pre-wrap;line-height:1.9;padding:14px;border:1px solid var(--border,#ccc);border-radius:12px;font-size:1.05rem}.commute-question{border:0;padding:18px 0;margin:12px 0}.commute-question legend{line-height:1.8;font-size:1.05rem}.commute-option{display:flex;align-items:center;gap:12px;padding:14px;margin:8px 0;border:1px solid var(--border,#ccc);border-radius:12px;cursor:pointer;min-height:48px}.commute-option input{width:20px;height:20px;flex-shrink:0}.commute-correct{background:#e5f6ed;color:#13513d;border-color:#168061}.commute-wrong{background:#fbece8;color:#782d20;border-color:#b34837}.commute-feedback{line-height:1.8}.commute-term{padding:14px 0;border-top:1px solid var(--border,#ccc)}#commuteSection .commute-history-item{display:block;width:100%;text-align:left;white-space:normal}#commuteReview{margin-top:18px;border-top:1px solid var(--border,#ccc);padding-top:12px}#commuteReview li{padding:12px;margin:6px 0;line-height:1.7}#commuteSection button{min-height:44px;margin:6px 4px 6px 0}`;
     document.head.appendChild(style);
     root.querySelector('#commuteLevel').value = String(levelOf(read(LEVEL_KEY, session?.level || 900)));
     root.querySelector('#commuteLevel').addEventListener('change', ev => {
@@ -246,7 +291,25 @@
       }
     });
     root.querySelector('#commuteStart').addEventListener('click',start);
-    root.querySelector('#commuteResume').addEventListener('click',() => {session.complete=false;session.index=0;persist();render();});
+    root.querySelector('#commuteResume').addEventListener('click',()=>{if(session)openReview(session.id);});
+    root.addEventListener('click',ev=>{
+      const link=ev.target.closest('[data-history-open]');if(link){openReview(link.dataset.historyOpen);return;}
+      if(ev.target.closest('#commuteReviewClose')){reviewItem=null;renderReview();return;}
+      if(!reviewItem)return;
+      const part=ev.target.closest('button[data-review-group]');
+      if(part){reviewIndex=Number(part.dataset.reviewGroup);renderReview();root.querySelector('#commuteReview').scrollIntoView({block:'start'});return;}
+      if(ev.target.closest('#commuteReviewNext')){
+        if(reviewIndex+1<reviewItem.session.groups.length)reviewIndex++;else reviewItem=null;
+        renderReview();root.querySelector(reviewItem?'#commuteReview':'#commuteHistory').scrollIntoView({block:'start'});return;
+      }
+      const button=ev.target.closest('[data-review-save], [data-review-speak]');if(!button)return;
+      const [i,j]=(button.dataset.reviewSave||button.dataset.reviewSpeak).split(':').map(Number);
+      const term=reviewItem.session.groups[reviewIndex].questions[i].terms[j];
+      if(button.hasAttribute('data-review-speak')){speak(term.word);return;}
+      if(registered(term.word)){button.textContent='登録済み';return;}
+      try{saveWords([...loadWords(),{id:`review-${Date.now()}-${Math.random().toString(36).slice(2)}`,word:term.word,meaning:term.meaning,status:'default',example:term.example,exampleTranslation:term.translation,synonyms:'',memo:`発音: ${term.pronunciation}\nコロケーション: ${term.collocation}`,tags:'TOEIC,通勤練習',source:'commute-review',createdAt:new Date().toISOString()}]);button.textContent='登録済み';}
+      catch{message('単語を保存できませんでした。端末の空き容量を確認してください。');}
+    });
     root.addEventListener('change',ev => {
       if (!session || session.complete || !ev.target.matches('[data-cq]')) return;
       const g = session.groups[session.index]; if (g.graded) return;
@@ -257,18 +320,21 @@
       const g = session.groups[session.index];
       if (ev.target.closest('#commuteGrade')) {
         if (g.questions.some(q => q.choice === null)) { message('すべての問題で選択肢を選んでください。'); return; }
-        g.graded = true; persist(); message('採点しました。解説と単語を確認できます。');render();
+        g.graded = true; session.answeredAt ||= new Date().toISOString(); persist();
+        message('採点しました。解説と単語を確認できます。');archiveSession(session);history();render();
         root.querySelector('#commutePractice').scrollIntoView({block:'start'});
       }
       if (ev.target.closest('#commuteNext') && g.graded) {
         if (session.index + 1 < session.groups.length) session.index++;
         else {
           session.complete = true;
+          session.completedAt ||= new Date().toISOString();
           try {
             const questions = session.groups.flatMap(g => g.questions);
             const items = read(HISTORY,[]).filter(x => x.id !== session.id);
-            localStorage.setItem(HISTORY,JSON.stringify([...items,{id:session.id,at:new Date().toISOString(),correct:questions.filter(q => q.choice === q.answer).length,total:questions.length,level:levelOf(session.level)}].slice(-100)));
+            localStorage.setItem(HISTORY,JSON.stringify([...items,{id:session.id,at:session.completedAt,correct:questions.filter(q => q.choice === q.answer).length,total:questions.length,level:levelOf(session.level)}].slice(-100)));
           } catch { message('成績履歴を保存できませんでした。'); }
+          archiveSession(session);
         }
         persist(); render(); root.scrollIntoView({block:'start'});
       }
@@ -285,6 +351,11 @@
         } catch { message('単語を保存できませんでした。'); }
       }
     });
+    // Recover the last full response still present when upgrading from score-only history.
+    const previousScores=read(HISTORY,[]);
+    const previousAt=(Array.isArray(previousScores)?previousScores:[]).find(item=>item.id===session?.id)?.at;
+    if(session?.groups.some(group=>group.graded))archiveSession(session,previousAt);
+    try{localStorage.setItem(ARCHIVE,JSON.stringify(archiveItems()));}catch{}
     history(); render();
     if (session && !session.complete) message('前回の続きから解答できます。');
     networkMessage();

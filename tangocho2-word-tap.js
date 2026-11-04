@@ -4,7 +4,7 @@
   const CACHE='tangoCho2WordLookup:v1';
   const norm=s=>String(s||'').trim().toLowerCase().replace(/’/g,"'");
   const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))||fallback;}catch{return fallback;}};
-  const selector='#commutePractice .commute-passage[lang="en"], #commutePractice .commute-question legend, #commutePractice .commute-option span, #part5Section .p5-sentence, #tc2FiveResult .tc2-sentence';
+  const selector='#commuteReview .commute-passage[lang="en"], #commuteReview .commute-review-prompt, #commuteReview .commute-review-options span, #commutePractice .commute-passage[lang="en"], #commutePractice .commute-question legend, #commutePractice .commute-option span, #part5Section .p5-sentence, #tc2FiveResult .tc2-sentence';
   let dialog,selected=null,revision=0,scheduled=false;
   const pending=new Map();
   const savedWord=word=>(typeof loadWords==='function'?loadWords():[]).find(item=>norm(item.word)===norm(word));
@@ -18,7 +18,11 @@
   function known(word,context){
     const saved=savedWord(word);
     if(saved)return {...saved,lemma:saved.word,pronunciation:'',found:true,source:'単語帳'};
-    const data=read('tangoCho2Commute:v1',null),group=data?.groups?.[data.index];
+    const review=selected?.trigger?.closest('[data-commute-review-id]');
+    const archive=read('tangoCho2CommuteArchive:v1',[]);
+    const current=read('tangoCho2Commute:v1',null);
+    const data=review?((Array.isArray(archive)?archive:[]).find(item=>item.id===review.dataset.commuteReviewId)?.session||(current?.id===review.dataset.commuteReviewId?current:null)):current;
+    const group=data?.groups?.[review?Number(review.dataset.reviewGroup):data.index];
     const term=group?.questions?.flatMap(q=>q.terms||[]).find(t=>norm(t.word)===norm(word));
     if(term)return {found:true,lemma:term.word,meaning:term.meaning,pronunciation:term.pronunciation,example:term.example,exampleTranslation:term.translation,memo:`コロケーション: ${term.collocation}`,source:'保存済みの問題'};
     const cache=read(CACHE,[]);
