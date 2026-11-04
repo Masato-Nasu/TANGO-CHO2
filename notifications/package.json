@@ -1,0 +1,17 @@
+{
+  "name": "tangocho2-notifications",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "setup": "node setup.mjs",
+    "test": "node --test worker.test.mjs",
+    "check": "node --check worker.mjs && node --check setup.mjs"
+  },
+  "dependencies": {
+    "web-push": "3.6.7"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

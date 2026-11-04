@@ -1,6 +1,6 @@
 /* TANGO-CHO2 Service Worker */
 const CACHE_PREFIX = 'tango-cho2-cache-';
-const CACHE_NAME = `${CACHE_PREFIX}v0.28.0`;
+const CACHE_NAME = `${CACHE_PREFIX}v0.29.0`;
 
 const CORE_ASSETS = [
   "./",
@@ -19,6 +19,7 @@ const CORE_ASSETS = [
   "./tangocho2-behavior.js?v=0.3.1",
   "./tangocho2-progress.js?v=0.7.0",
   "./tangocho2-commute.js?v=0.1.0",
+  "./tangocho2-notifications.js?v=0.1.0",
   "./tangocho2-part5.js?v=0.15.0",
   "./tangocho2-study-time.js?v=0.2.0",
   "./tangocho2-backup.js?v=0.13.0",
@@ -119,4 +120,28 @@ self.addEventListener("fetch", (event) => {
 
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
+
+// Web Push wakes this worker even when no application window is open.
+self.addEventListener('push', event => {
+  event.waitUntil(self.registration.showNotification('TANGO-CHO2', {
+    body:'TOEIC練習の時間です。読解・Part 5・語彙を少しずつ。',
+    icon:new URL('./icons/icon-192-v26.png',self.registration.scope).href,
+    badge:new URL('./icons/icon-192-v26.png',self.registration.scope).href,
+    tag:'tc2-commute',
+    data:{url:new URL('./#commute',self.registration.scope).href}
+  }));
+});
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const target=new URL('./#commute',self.registration.scope).href;
+  event.waitUntil((async()=>{
+    const windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+    for(const client of windows){
+      if(client.url.startsWith(self.registration.scope)){
+        await client.navigate(target);await client.focus();return;
+      }
+    }
+    await self.clients.openWindow(target);
+  })());
 });

@@ -1,0 +1,36 @@
+const {chromium}=require('playwright');
+const assert=require('node:assert/strict'),fs=require('node:fs'),http=require('node:http'),path=require('node:path'),vm=require('node:vm');
+const repo=path.resolve(__dirname,'..');
+(async()=>{
+ const server=http.createServer((req,res)=>{let name=new URL(req.url,'http://localhost').pathname;if(name.endsWith('/'))name+='index.html';try{const f=path.join(repo,name);res.setHeader('Content-Type',f.endsWith('.js')?'application/javascript':f.endsWith('.css')?'text/css':f.endsWith('.html')?'text/html':'application/json');res.end(fs.readFileSync(f));}catch{res.writeHead(404);res.end();}});await new Promise(r=>server.listen(8796,'127.0.0.1',r));
+ const browser=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE_PATH,args:['--no-sandbox','--disable-gpu','--no-zygote']});const page=await browser.newPage({viewport:{width:390,height:844},serviceWorkers:'block'});const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.route('https://cdn.jsdelivr.net/**',r=>r.fulfill({body:''}));
+ await page.addInitScript(()=>{
+  window.permissionRequests=0;window.subscriptions=0;
+  window.PushManager=class{};
+  window.Notification={requestPermission:async()=>{permissionRequests++;return 'granted';}};
+  const registration={update(){},pushManager:{getSubscription:async()=>null,subscribe:async()=>{subscriptions++;return {toJSON:()=>({endpoint:'test',keys:{}}),unsubscribe:async()=>true};}}};
+  Object.defineProperty(navigator,'serviceWorker',{value:{ready:Promise.resolve(registration),register:async()=>registration}});
+ });
+ const calls=[];
+ await page.route('https://notify-test.workers.dev/**',async r=>{
+  const url=new URL(r.request().url()),method=r.request().method();calls.push({path:url.pathname,method,auth:r.request().headers().authorization});
+  if(url.pathname==='/config')return r.fulfill({json:{service:'tangocho2-notifications',publicKey:'B'.repeat(87),timezone:'Asia/Tokyo',times:['08:45','18:15']}});
+  if(url.pathname==='/subscriptions')return r.fulfill({json:{id:'abc',token:'secret-test'}});
+  return r.fulfill({json:{ok:true}});
+ });
+ await page.goto('http://127.0.0.1:8796/#commute');await page.locator('#commuteSection.active').waitFor();
+ await page.locator('#tc2PushState').evaluate(el=>el.closest('details').open=true);await page.locator('#tc2PushSetup').evaluate(el=>el.open=true);
+ assert(await page.locator('#tc2PushEnable').isDisabled());assert.equal(await page.evaluate(()=>permissionRequests),0);
+ await page.locator('#tc2PushServer').fill('https://notify-test.workers.dev');await page.locator('#tc2PushConnect').click();await page.waitForFunction(()=>!document.getElementById('tc2PushEnable').disabled);assert.equal(await page.evaluate(()=>permissionRequests),0);
+ await page.locator('#tc2PushEnable').click();await page.waitForFunction(()=>document.getElementById('tc2PushState').textContent.includes('登録済み'));assert.equal(await page.evaluate(()=>permissionRequests),1);assert.equal(await page.evaluate(()=>subscriptions),1);
+ await page.locator('#tc2PushTest').click();await page.waitForFunction(()=>document.getElementById('tc2PushMsg').textContent.includes('送信しました'));assert(calls.find(c=>c.path.endsWith('/test')&&c.auth==='Bearer secret-test'));
+ await page.locator('#tc2PushDisable').click();await page.waitForFunction(()=>document.getElementById('tc2PushState').textContent.includes('未設定'));assert(calls.find(c=>c.method==='DELETE'&&c.auth==='Bearer secret-test'));
+ assert.deepEqual(errors,[]);await browser.close();server.close();
+ const handlers={},shown=[],opened=[];
+ const scope='https://masato-nasu.github.io/TANGO-CHO2/';
+ const self={addEventListener:(name,fn)=>handlers[name]=fn,registration:{scope,showNotification:async(...a)=>shown.push(a)},clients:{matchAll:async()=>[],openWindow:async url=>opened.push(url)}};
+ vm.runInNewContext(fs.readFileSync(path.join(repo,'service-worker.js'),'utf8'),{self,URL});
+ let work;handlers.push({waitUntil:p=>work=p});await work;assert.equal(shown[0][0],'TANGO-CHO2');assert.equal(shown[0][1].data.url,scope+'#commute');
+ handlers.notificationclick({notification:{close(){}},waitUntil:p=>work=p});await work;assert.deepEqual(opened,[scope+'#commute']);
+ console.log('PASS: no automatic permission prompt, connect/subscribe/test/unsubscribe, Tokyo schedule labels, commute deep-link, push display and safe notification click');
+})().catch(e=>{console.error(e);process.exit(1)});

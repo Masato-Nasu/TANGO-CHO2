@@ -1,0 +1,6 @@
+node_modules/
+.wrangler/
+wrangler.json
+.keys.json
+.secrets.json
+.dev.vars
