@@ -15,11 +15,16 @@ try{
     const name='tangocho2-notifications';
     const list=parse(run(['d1','list','--json'],{capture:true}));
     let database=list.find(x=>x.name===name);
-    if(!database)database=parse(run(['d1','create',name,'--json'],{capture:true}));
+    if(!database){
+      run(['d1','create',name,'--update-config=false']);
+      database=parse(run(['d1','list','--json'],{capture:true})).find(x=>x.name===name);
+    }
+    if(!database)throw new Error('作成した通知用D1が見つかりませんでした。アカウントを確認してください。');
     const id=database.uuid||database.database_id||database.id;
     if(!id||!/^[a-f0-9-]{36}$/.test(id))throw new Error('D1のIDを取得できませんでした。');
     const config=JSON.parse(readFileSync('wrangler.example.json','utf8'));
     config.d1_databases[0].database_id=id;
+    if(process.env.CLOUDFLARE_ACCOUNT_ID)config.account_id=process.env.CLOUDFLARE_ACCOUNT_ID;
     writeFileSync('wrangler.json',JSON.stringify(config,null,2)+'\n');
   }
   const config=JSON.parse(readFileSync('wrangler.json','utf8'));

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "setup": "node setup.mjs",
-    "test": "node --test worker.test.mjs",
+    "test": "node --test worker.test.mjs setup.test.mjs",
     "check": "node --check worker.mjs && node --check setup.mjs"
   },
   "dependencies": {
