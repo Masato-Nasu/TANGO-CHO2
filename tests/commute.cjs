@@ -30,14 +30,16 @@ const fixture = type => ({title:'Office update',passage:type==='Part 7'?Array(18
  d.getElementById('translateBtn').click();await tick();input('fourth');w.resolveTranslate('古い訳');await tick();assert.equal(d.getElementById('meaning').value,'');
  w.eval('enrichTermViaAi = () => new Promise(r => window.resolveEnrich = r)');
  d.getElementById('aiAssistBtn').click();await tick();input('fifth');w.resolveEnrich({meaning:'古い意味',synonyms:[],example:'old',exampleTranslation:'旧',memo:'old'});await tick();assert.equal(d.getElementById('meaning').value,'');
- let calls=[];w.callOpenAiJson=async args=>{const type=JSON.parse(args.input).type;calls.push(type);return fixture(type);};
+ d.getElementById('commuteLevel').value='600';d.getElementById('commuteLevel').dispatchEvent(new w.Event('change'));
+ assert.deepEqual([...d.querySelectorAll('#commuteLevel option')].map(o=>o.value),['600','700','800','900']);
+ let calls=[];w.callOpenAiJson=async args=>{assert.equal(JSON.parse(args.input).level,600);assert.match(args.instruction,/targeting TOEIC 600/);const type=JSON.parse(args.input).type;calls.push(type);return fixture(type);};
  d.getElementById('commuteStart').click();await tick();await tick();assert.deepEqual(calls,['Part 7','Part 5','語彙']);
  assert.equal(d.querySelectorAll('.commute-question').length,3);
  assert.equal(d.querySelectorAll('.commute-feedback').length,0);
  d.getElementById('commuteGrade').click();assert.match(d.getElementById('commuteMsg').textContent,/すべて/);
  const choose=(i,value=0)=>{const radio=d.querySelector(`[name="commuteQ${i}"][value="${value}"]`);radio.checked=true;radio.dispatchEvent(new w.Event('change',{bubbles:true}));};
  choose(0); const saved=Object.fromEntries(Object.keys(w.localStorage).map(k=>[k,w.localStorage.getItem(k)]));dom.window.close();
- ({dom,w,d}=await init(saved));assert(d.querySelector('[name="commuteQ0"][value="0"]').checked);
+ ({dom,w,d}=await init(saved));assert(d.querySelector('[name="commuteQ0"][value="0"]').checked);assert.equal(d.getElementById('commuteLevel').value,'600');assert.match(d.getElementById('commutePractice').textContent,/600点/);
  for(let group=0;group<3;group++){
   const count=group===0?3:5;
   for(let i=0;i<count;i++)choose(i);
@@ -53,6 +55,12 @@ const fixture = type => ({title:'Office update',passage:type==='Part 7'?Array(18
  d.getElementById('commuteResume').click();assert.equal(d.querySelectorAll('.commute-feedback').length,3);
  for(let i=0;i<3;i++)d.getElementById('commuteNext').click();
  assert.equal(JSON.parse(w.localStorage.getItem('tangoCho2CommuteHistory:v1')).length,1);
+ w.confirm=()=>true;d.getElementById('commuteMode').value='Part 5';
+ for(const level of [700,800,900]){
+   d.getElementById('commuteLevel').value=String(level);
+   w.callOpenAiJson=async args=>{assert.equal(JSON.parse(args.input).level,level);assert(args.instruction.includes(`targeting TOEIC ${level}`));assert(!args.instruction.includes('scoring 855'));return fixture('Part 5');};
+   d.getElementById('commuteStart').click();await tick();await tick();assert.equal(JSON.parse(w.localStorage.getItem('tangoCho2Commute:v1')).level,level);
+ }
  dom.window.close();
  console.log('PASS: term-switch resets and stale async results; 13-question commute generation, answer gating, reload/resume, grading, deduplicated vocabulary registration and history');
 })().catch(e=>{console.error(e);process.exit(1)});
