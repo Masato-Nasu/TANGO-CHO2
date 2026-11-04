@@ -1,6 +1,6 @@
 /* TANGO-CHO2 Service Worker */
 const CACHE_PREFIX = 'tango-cho2-cache-';
-const CACHE_NAME = `${CACHE_PREFIX}v0.37.0`;
+const CACHE_NAME = `${CACHE_PREFIX}v0.38.0`;
 
 const CORE_ASSETS = [
   "./",
@@ -28,9 +28,10 @@ const CORE_ASSETS = [
   "./manifest.json",
   "./share-target.html",
   "./icons/tangocho2-cute.svg?v=0.4.0",
-  "./icons/icon-192-v26.png",
-  "./icons/icon-512-v26.png",
-  "./icons/apple-touch-icon-v26.png",
+  "./icons/icon-192-v27.png",
+  "./icons/icon-512-v27.png",
+  "./icons/icon-maskable-v27.png",
+  "./icons/apple-touch-icon-v27.png",
   "./data/pos_noun.txt",
   "./data/pos_verb.txt",
   "./data/pos_adj.txt",
@@ -127,8 +128,8 @@ self.addEventListener('message', (event) => {
 self.addEventListener('push', event => {
   event.waitUntil(self.registration.showNotification('TANGO-CHO2', {
     body:'TOEIC練習の時間です。読解・Part 5・語彙を少しずつ。',
-    icon:new URL('./icons/icon-192-v26.png',self.registration.scope).href,
-    badge:new URL('./icons/icon-192-v26.png',self.registration.scope).href,
+    icon:new URL('./icons/icon-192-v27.png',self.registration.scope).href,
+    badge:new URL('./icons/icon-192-v27.png',self.registration.scope).href,
     tag:'tc2-commute',
     data:{url:new URL('./#commute',self.registration.scope).href}
   }));

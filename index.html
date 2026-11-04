@@ -8,10 +8,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="TANGO-CHO2" />
-  <link rel="apple-touch-icon" href="./icons/apple-touch-icon-v26.png" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon-v27.png" />
   <link rel="icon" type="image/svg+xml" href="./icons/tangocho2-cute.svg?v=0.4.0" />
-  <link rel="icon" sizes="192x192" href="./icons/icon-192-v26.png" />
-  <link rel="icon" sizes="512x512" href="./icons/icon-512-v26.png" />
+  <link rel="icon" sizes="192x192" href="./icons/icon-192-v27.png" />
+  <link rel="icon" sizes="512x512" href="./icons/icon-512-v27.png" />
 
   <meta name="theme-color" content="#fffaf2" />
   <link rel="manifest" href="manifest.json" />
@@ -324,7 +324,7 @@
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=0.37.0", { updateViaCache: 'none' })
+        navigator.serviceWorker.register("./service-worker.js?v=0.38.0", { updateViaCache: 'none' })
           .then(reg => reg.update()).catch(console.error);
       });
     }
