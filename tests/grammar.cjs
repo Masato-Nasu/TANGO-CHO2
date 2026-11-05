@@ -23,7 +23,7 @@ const repo=path.resolve(__dirname,'..'),tick=()=>new Promise(r=>setTimeout(r,0))
    const expected=w.TC2Grammar.bank.find(q=>q.prompt===text);
    assert(expected);if(expected.category==='causative')causatives++;
    const options=[...d.querySelectorAll('[data-p5-answer]')];const index=options.findIndex(b=>b.textContent.slice(1).trim()===expected.options[expected.answer]);assert(index>=0);positions[index]++;
-   const wrong=mode==='GRAMMAR'&&i===0;options[wrong?(index+1)%4:index].click();assert.match(d.getElementById('p5Feedback').textContent,wrong?/^不正解 ·/:/^正解 ·/);assert(d.getElementById('p5Feedback').textContent.includes(expected.translation));
+   const wrong=mode==='GRAMMAR'&&i===0;options[wrong?(index+1)%4:index].click();assert.match(d.getElementById('p5Feedback').textContent,wrong?/^不正解 ·/:/^正解 ·/);assert(d.getElementById('p5Feedback').textContent.includes('\n\n問題文の全文日本語訳\n'+expected.translation));
    d.getElementById('p5Next').click();
   }
   assert.equal(causatives,mode==='CAUSATIVE'?30:6);assert(Math.max(...positions)-Math.min(...positions)<=1);
