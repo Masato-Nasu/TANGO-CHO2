@@ -18,7 +18,7 @@
 ## UI Preview
 
 <p align="center">
-  <img src="https://masato-lab.pages.dev/media/portfolio/2026-10-06T11-09-03-681Z-tangocho2-part5-clean.jpg" width="900" alt="TANGO-CHO2 actual UI screenshot">
+  <img src="https://masato-lab.pages.dev/media/portfolio/2026-11-05T20-51-09-517Z-tangocho2-toeic-practice.jpg" width="900" alt="TANGO-CHO2 TOEIC practice home screen">
 </p>
 
 TANGO-CHOをベースに、従来の **Fortune(EN)** を廃止し、5語をAIが選ぶ **5 WORDS** を語彙発見の入口として統合しました。
