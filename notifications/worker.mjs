@@ -32,7 +32,8 @@ async function authorized(request,env,id) {
 export async function send(sub,env,slot,transport=fetch) {
   const options={TTL:1800,urgency:'normal',topic:'tc2-commute',vapidDetails:{subject:env.VAPID_SUBJECT,publicKey:env.VAPID_PUBLIC_KEY,privateKey:env.VAPID_PRIVATE_KEY}};
   const details=webpush.generateRequestDetails(sub,JSON.stringify({slot}),options);
-  return transport(details.endpoint,{method:details.method,headers:details.headers,body:details.body,redirect:'error'});
+  // Workers only support follow/manual. Leave redirects unfollowed so callers reject 3xx responses.
+  return transport(details.endpoint,{method:details.method,headers:details.headers,body:details.body,redirect:'manual'});
 }
 export async function deliver(env,timestamp,transport=fetch) {
   const slot=notificationSlot(timestamp);if(!slot)return;
