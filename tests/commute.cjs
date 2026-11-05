@@ -75,7 +75,13 @@ const fixture = type => ({title:'Office update',passage:type==='Part 7'?Array(18
    const {type,savedTargets}=JSON.parse(input);
    generated.push({type,targets:savedTargets?.map(t=>t.word)});
    const group=fixture(type);
-   if(type==='Part 5'&&generated.length===2)return group; // A valid shape with incorrect target words must be retried.
+   if(type==='Part 7'||type==='Part 5'){
+     if(generated.filter(call=>call.type===type).length===1)return group; // Missing targets must be retried.
+     if(type==='Part 7'){
+       group.passage+=' The team will carry out the inspection and defer the announcement.';
+       return group;
+     }
+   }
    savedTargets?.forEach(({word},i)=>{
      const q=group.questions[i];
      q.terms[0].word=word;
@@ -86,13 +92,15 @@ const fixture = type => ({title:'Office update',passage:type==='Part 7'?Array(18
  };
  d.getElementById('commuteStart').click();await tick();await tick();
  assert.deepEqual(generated,[
-   {type:'Part 7',targets:undefined},
+   {type:'Part 7',targets:['carry out','defer']},
+   {type:'Part 7',targets:['carry out','defer']},
    {type:'Part 5',targets:['carry out','defer']},
    {type:'Part 5',targets:['carry out','defer']},
    {type:'語彙',targets:['amend','carry out','defer']}
  ]);
  const practice=JSON.parse(w.localStorage.getItem('tangoCho2Commute:v1'));
  assert.equal(practice.groups.flatMap(g=>g.questions).length,13);
+ assert.match(practice.groups[0].passage,/carry out.*defer/);
  const part5Answers=practice.groups[1].questions.map(q=>q.options[q.answer]);
  for(const target of ['carry out','defer'])assert(part5Answers.includes(target));
  dom.window.close();
