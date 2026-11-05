@@ -34,7 +34,7 @@ test('Real encrypted Web Push request, no redirects, unique delivery per slot an
  const e=env(),s=sub();const credentials=await (await worker.fetch(req('/subscriptions','POST',s),e)).json();
  const calls=[];const transport=async(url,options)=>{calls.push({url,options});return new Response('',{status:201});};
  const time=Date.parse('2026-11-03T23:45:00Z');await deliver(e,time,transport);await deliver(e,time,transport);
- assert.equal(calls.length,1);assert.equal(calls[0].url,s.endpoint);assert.equal(calls[0].options.headers['Content-Encoding'],'aes128gcm');assert.equal(calls[0].options.redirect,'error');assert(calls[0].options.body.length>20);assert(calls[0].options.headers.Authorization.includes('vapid'));
+ assert.equal(calls.length,1);assert.equal(calls[0].url,s.endpoint);assert.equal(calls[0].options.headers['Content-Encoding'],'aes128gcm');assert.equal(calls[0].options.redirect,'manual');assert(calls[0].options.body.length>20);assert(calls[0].options.headers.Authorization.includes('vapid'));
  await deliver(e,Date.parse('2026-11-04T09:15:00Z'),transport);assert.equal(calls.length,2);
  await deliver(e,Date.parse('2026-11-04T23:45:00Z'),async()=>new Response('',{status:410}));assert.equal(e.db.prepare('SELECT COUNT(*) AS n FROM subscriptions').get().n,0);e.db.close();
 });
