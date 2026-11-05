@@ -3,7 +3,7 @@ const {JSDOM}=require('jsdom');
 const repo=path.resolve(__dirname,'..'),Q='tangoCho2CommuteQueue:v1',S='tangoCho2Commute:v1';
 const tick=()=>new Promise(r=>setTimeout(r,0));
 const wait=async test=>{for(let i=0;i<300;i++){if(test())return;await new Promise(r=>setTimeout(r,5));}throw new Error('Timed out');};
-const fixture=(type,n)=>({title:'Office update '+n,passage:type==='Part 7'?Array(180).fill('office').join(' '):'',passageTranslation:type==='Part 7'?'お知らせの訳':'',questions:Array.from({length:type==='Part 7'?3:5},()=>({prompt:type==='Part 5'?'Please ____ the report.':'What does the notice say?',options:['submit','A','B','C'],answer:0,explanation:'submitが適切です。',translation:'報告書を提出してください。',terms:[{word:'submit',meaning:'提出する',pronunciation:'səbˈmɪt',collocation:'submit a report',example:'Please submit the report.',translation:'報告書を提出してください。'}]}))});
+const fixture=(type,n)=>({title:'Office update '+n,passage:type==='Part 7'?Array(180).fill('office').join(' '):'',passageTranslation:type==='Part 7'?'お知らせの訳':'',questions:Array.from({length:type==='Part 7'?3:type==='Part 5'?2:5},()=>({prompt:type==='Part 5'?'Please ____ the report.':'What does the notice say?',options:['submit','A','B','C'],answer:0,explanation:'submitが適切です。',translation:'報告書を提出してください。',terms:[{word:'submit',meaning:'提出する',pronunciation:'səbˈmɪt',collocation:'submit a report',example:'Please submit the report.',translation:'報告書を提出してください。'}]}))});
 async function init(type='wifi',storage={},failAt=0){
  const dom=new JSDOM(fs.readFileSync(path.join(repo,'index.html'),'utf8'),{url:'https://test.invalid',runScripts:'outside-only',pretendToBeVisual:true});
  const w=dom.window,d=w.document,connection=new w.EventTarget();connection.type=type;
@@ -51,6 +51,17 @@ async function init(type='wifi',storage={},failAt=0){
  finishReading();await wait(()=>JSON.parse(a.w.localStorage.getItem(Q)||'[]').length===1);
  assert.deepEqual(a.calls.map(call=>call.type),['Part 7','Part 7','Part 5','語彙']);
  assert.equal(JSON.parse(a.w.localStorage.getItem(S)).id,queued[0].id);a.dom.window.close();
+ // A partially generated set resumes after a reload without requesting its finished passage again.
+ a=await init('wifi',{[Q]:JSON.stringify([queued[0]])},2);
+ await wait(()=>a.d.getElementById('commuteOfflineStatus').textContent.includes('AI unavailable'));
+ assert.deepEqual(a.calls.map(call=>call.type),['Part 7','Part 5']);
+ const interrupted=a.snapshot();a.dom.window.close();
+ a=await init('wifi',interrupted);await wait(()=>JSON.parse(a.w.localStorage.getItem(Q)||'[]').length===2);
+ assert.deepEqual(a.calls.map(call=>call.type),['Part 5','語彙']);
+ const resumed=JSON.parse(a.w.localStorage.getItem(Q))[1];
+ assert.equal(resumed.groups[0].title,'Office update 1');
+ assert.equal(resumed.groups.reduce((sum,group)=>sum+group.questions.length,0),13);
+ assert.equal(a.w.localStorage.getItem('tangoCho2CommuteDraft:v1'),null);a.dom.window.close();
  a=await init('wifi');a.w.callOpenAiJson=async args=>{a.calls.push(JSON.parse(args.input));a.connection.type='cellular';return fixture(JSON.parse(args.input).type,1);};await wait(()=>a.d.getElementById('commuteOfflineStatus').textContent.includes('停止しました'));assert.equal(a.calls.length,1);assert.equal(a.w.localStorage.getItem(Q),null);a.dom.window.close();
  a=await init('wifi');a.w.Storage.prototype.setItem=function(key){if(key===Q)throw new Error('storage full');};await wait(()=>a.d.getElementById('commuteOfflineStatus').textContent.includes('storage full'));assert.equal(a.w.localStorage.getItem(Q),null);assert.equal(a.d.querySelectorAll('[data-offline-start]').length,0);a.dom.window.close();
  // A manually generated active set from the old app also occupies one of the two slots.

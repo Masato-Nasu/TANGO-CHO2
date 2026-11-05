@@ -17,7 +17,7 @@ async function init(storage={}) {
  await tick();
  return {dom,w,d:w.document};
 }
-const fixture = type => ({title:'Office update',passage:type==='Part 7'?Array(180).fill('office').join(' '):'',passageTranslation:type==='Part 7'?'お知らせの全文訳':'',questions:Array.from({length:type==='Part 7'?3:5},(_,i)=>({prompt:type==='Part 5'?'Please ____ the report.':'What does the notice state?',options:['submit','A','B','C'],answer:0,explanation:'submitが正解。他の選択肢は文脈に合いません。',translation:'報告書を提出してください。',terms:[{word:'submit',meaning:'提出する',pronunciation:'səbˈmɪt',collocation:'submit a report',example:'Please submit the report.',translation:'報告書を提出してください。'}]}))});
+const fixture = type => ({title:'Office update',passage:type==='Part 7'?Array(180).fill('office').join(' '):'',passageTranslation:type==='Part 7'?'お知らせの全文訳':'',questions:Array.from({length:type==='Part 7'?3:type==='Part 5'?2:5},(_,i)=>({prompt:type==='Part 5'?'Please ____ the report.':'What does the notice state?',options:['submit','A','B','C'],answer:0,explanation:'submitが正解。他の選択肢は文脈に合いません。',translation:'報告書を提出してください。',terms:[{word:'submit',meaning:'提出する',pronunciation:'səbˈmɪt',collocation:'submit a report',example:'Please submit the report.',translation:'報告書を提出してください。'}]}))});
 (async()=>{
  let {dom,w,d}=await init();
  const input = word => {d.getElementById('word').value=word;d.getElementById('word').dispatchEvent(new w.Event('input',{bubbles:true}));};
