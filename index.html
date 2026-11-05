@@ -312,7 +312,7 @@
   <script src="tangocho2-storage-shim.js?v=0.2.0"></script>
   <script src="script.js?v=48.0.10"></script>
   <script src="api-response-fix.js?v=48.0.8"></script>
-  <script src="tangocho2-fivewords.js?v=0.11.0"></script>
+  <script src="tangocho2-fivewords.js?v=0.11.1"></script>
   <script src="tangocho2-auto-register.js?v=0.6.0"></script>
   <script src="tangocho2-grammar.js?v=0.1.1"></script>
   <script src="tangocho2-commute.js?v=0.8.3"></script>
@@ -325,7 +325,7 @@
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=0.41.3", { updateViaCache: 'none' })
+        navigator.serviceWorker.register("./service-worker.js?v=0.41.4", { updateViaCache: 'none' })
           .then(reg => reg.update()).catch(console.error);
       });
     }

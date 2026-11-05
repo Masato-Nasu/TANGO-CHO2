@@ -81,9 +81,9 @@
       hero.id = 'tc2ProgressHero';
       hero.className = 'tc2-progress-hero';
       hero.innerHTML = `
-        <div class="tc2-progress-eyebrow">YOUR VOCABULARY</div>
-        <h2>好きなときに、5語ずつ。</h2>
-        <p>5語の発見とPART 5の練習で、自分の単語帳を育てていきます。</p>
+        <div class="tc2-progress-eyebrow">TOEIC PRACTICE</div>
+        <h2>自分の単語帳で、TOEIC対策。</h2>
+        <p>英単語を集めて復習。登録した単語でPART 5を練習し、通勤中にはPART 7の長文にも取り組めます。</p>
         <div class="tc2-progress-stats">
           <div class="tc2-progress-stat"><b id="tc2LearnedCount">0</b><span>生成した語</span></div>
           <div class="tc2-progress-stat"><b id="tc2StickerCount">0</b><span>生成セット</span></div>

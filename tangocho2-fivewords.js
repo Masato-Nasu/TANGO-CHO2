@@ -20,7 +20,7 @@
       [
         './tangocho2-example-sync.js?v=0.4.0',
         './tangocho2-behavior.js?v=0.3.1',
-        './tangocho2-progress.js?v=0.7.0'
+        './tangocho2-progress.js?v=0.7.1'
       ].forEach(src => {
         if (document.querySelector(`script[data-tc2-extra="${src}"]`)) return;
         const script = document.createElement('script');
