@@ -63,5 +63,38 @@ const fixture = type => ({title:'Office update',passage:type==='Part 7'?Array(18
    d.getElementById('commuteStart').click();await tick();await tick();assert.equal(JSON.parse(w.localStorage.getItem('tangoCho2Commute:v1')).level,level);
  }
  dom.window.close();
+ ({dom,w,d}=await init({'tangoCho2CommuteAutoPrepare:v1':'false','tangoCho2CommuteRecent:v1':'["defer","amend"]'}));
+ w.eval(`saveWords([
+   {id:'1',word:'defer',meaning:'延期する'},
+   {id:'2',word:'amend',meaning:'修正する'},
+   {id:'3',word:'carry out',meaning:'実施する'},
+   {id:'4',word:' Defer ',meaning:'延期する'}
+ ])`);
+ const generated=[];
+ w.callOpenAiJson=async ({input})=>{
+   const {type,savedTargets}=JSON.parse(input);
+   generated.push({type,targets:savedTargets?.map(t=>t.word)});
+   const group=fixture(type);
+   if(type==='Part 5'&&generated.length===2)return group; // A valid shape with incorrect target words must be retried.
+   savedTargets?.forEach(({word},i)=>{
+     const q=group.questions[i];
+     q.terms[0].word=word;
+     if(type==='Part 5') q.options[0]=word;
+     else q.prompt=`What does “${word}” mean in this notice?`;
+   });
+   return group;
+ };
+ d.getElementById('commuteStart').click();await tick();await tick();
+ assert.deepEqual(generated,[
+   {type:'Part 7',targets:undefined},
+   {type:'Part 5',targets:['carry out','defer']},
+   {type:'Part 5',targets:['carry out','defer']},
+   {type:'語彙',targets:['amend','carry out','defer']}
+ ]);
+ const practice=JSON.parse(w.localStorage.getItem('tangoCho2Commute:v1'));
+ assert.equal(practice.groups.flatMap(g=>g.questions).length,13);
+ const part5Answers=practice.groups[1].questions.map(q=>q.options[q.answer]);
+ for(const target of ['carry out','defer'])assert(part5Answers.includes(target));
+ dom.window.close();
  console.log('PASS: term-switch resets and stale async results; 13-question commute generation, answer gating, reload/resume, grading, deduplicated vocabulary registration and history');
 })().catch(e=>{console.error(e);process.exit(1)});
