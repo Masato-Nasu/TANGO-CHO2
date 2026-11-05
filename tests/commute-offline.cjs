@@ -33,6 +33,24 @@ async function init(type='wifi',storage={},failAt=0){
  }
  assert.match(a.d.getElementById('commutePractice').textContent,/13 \/ 13/);a.d.querySelector('[data-offline-start]').click();assert.notEqual(JSON.parse(a.w.localStorage.getItem(S)).id,active.id);assert.equal(a.calls.length,0);assert.equal(JSON.parse(a.w.localStorage.getItem(Q)).length,0);a.dom.window.close();
  a=await init('wifi',{},4);await wait(()=>a.d.getElementById('commuteOfflineStatus').textContent.includes('AI unavailable'));assert.equal(JSON.parse(a.w.localStorage.getItem(Q)).length,1);a.w.dispatchEvent(new a.w.Event('offline'));assert(a.d.getElementById('commuteOfflineStatus').textContent.includes('AI unavailable'));a.d.dispatchEvent(new a.w.Event('visibilitychange'));await wait(()=>JSON.parse(a.w.localStorage.getItem(Q)).length===2);assert.equal(a.calls.length,7);a.dom.window.close();
+ // A slow second set must neither lock the saved set nor repeat completed parts.
+ a=await init('wifi',{[Q]:JSON.stringify([queued[0]])});
+ let finishReading;
+ a.w.callOpenAiJson=async args=>{
+  const request=JSON.parse(args.input);a.calls.push(request);
+  assert.equal(args.timeoutMs,120000);
+  if(a.calls.length===1)throw Object.assign(new Error('Timed out'),{code:'AI_TIMEOUT'});
+  if(a.calls.length===2)await new Promise(resolve=>{finishReading=resolve;});
+  return fixture(request.type,a.calls.length);
+ };
+ await wait(()=>finishReading);
+ assert.match(a.d.getElementById('commuteOfflineStatus').textContent,/Part 7.*もう一度/);
+ const available=a.d.querySelector('[data-offline-start]');
+ assert(!available.disabled);available.click();
+ assert.equal(JSON.parse(a.w.localStorage.getItem(S)).id,queued[0].id);
+ finishReading();await wait(()=>JSON.parse(a.w.localStorage.getItem(Q)||'[]').length===1);
+ assert.deepEqual(a.calls.map(call=>call.type),['Part 7','Part 7','Part 5','語彙']);
+ assert.equal(JSON.parse(a.w.localStorage.getItem(S)).id,queued[0].id);a.dom.window.close();
  a=await init('wifi');a.w.callOpenAiJson=async args=>{a.calls.push(JSON.parse(args.input));a.connection.type='cellular';return fixture(JSON.parse(args.input).type,1);};await wait(()=>a.d.getElementById('commuteOfflineStatus').textContent.includes('停止しました'));assert.equal(a.calls.length,1);assert.equal(a.w.localStorage.getItem(Q),null);a.dom.window.close();
  a=await init('wifi');a.w.Storage.prototype.setItem=function(key){if(key===Q)throw new Error('storage full');};await wait(()=>a.d.getElementById('commuteOfflineStatus').textContent.includes('storage full'));assert.equal(a.w.localStorage.getItem(Q),null);assert.equal(a.d.querySelectorAll('[data-offline-start]').length,0);a.dom.window.close();
  // A manually generated active set from the old app also occupies one of the two slots.

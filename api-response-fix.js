@@ -66,9 +66,9 @@
     return "AIの応答が完了しませんでした。もう一度お試しください。";
   }
 
-  async function requestOnce({ apiKey, model, instruction, input, maxOutputTokens, responseSchema }) {
+  async function requestOnce({ apiKey, model, instruction, input, maxOutputTokens, responseSchema, timeoutMs }) {
     const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
-    const timer = ctrl ? setTimeout(() => ctrl.abort(), 60000) : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
 
     const body = {
       model,
@@ -84,7 +84,7 @@
     // For dictionary tasks, minimal reasoning leaves room for the visible JSON answer.
     if (isGpt5Family(model)) body.reasoning = { effort: "minimal" };
 
-    let res;
+    let res, raw;
     try {
       res = await fetch(RESPONSES_URL, {
         method: "POST",
@@ -98,16 +98,18 @@
         cache: "no-store",
         ...(ctrl ? { signal: ctrl.signal } : {}),
       });
+      raw = await res.text();
     } catch (e) {
       if (e?.name === "AbortError") {
-        throw new Error("AIへの接続がタイムアウトしました。通信状態をご確認ください。");
+        const error = new Error("AIへの接続がタイムアウトしました。通信状態をご確認ください。");
+        error.code = "AI_TIMEOUT";
+        throw error;
       }
       throw new Error("AIへ接続できませんでした。通信状態、APIキー、ブラウザの制限をご確認ください。");
     } finally {
       if (timer) clearTimeout(timer);
     }
 
-    const raw = await res.text().catch(() => "");
     let data = null;
     try { data = raw ? JSON.parse(raw) : null; } catch (_) {}
 
@@ -127,7 +129,7 @@
     return data || {};
   }
 
-  async function fixedCallOpenAiJson({ instruction, input, maxOutputTokens = 700, responseSchema }) {
+  async function fixedCallOpenAiJson({ instruction, input, maxOutputTokens = 700, responseSchema, timeoutMs = 60000 }) {
     if (typeof ensureAiSettingsLoaded === "function") await ensureAiSettingsLoaded();
 
     const apiKey = typeof getOpenAiApiKey === "function" ? getOpenAiApiKey() : "";
@@ -146,6 +148,7 @@
       input,
       maxOutputTokens: firstLimit,
       responseSchema,
+      timeoutMs,
     });
 
     let outputText = extractResponseText(data);
@@ -162,6 +165,7 @@
         input,
         maxOutputTokens: retryLimit,
         responseSchema,
+        timeoutMs,
       });
       outputText = extractResponseText(data);
       reason = incompleteReason(data);
