@@ -12,3 +12,6 @@ body:has(#addSection.active, #quizSection.active) .tab-bar [data-section="listSe
   border-color:var(--ink)!important;
   color:#fff!important;
 }
+[data-back-to-list]{
+  margin-block-end:var(--frameGap, 12px);
+}

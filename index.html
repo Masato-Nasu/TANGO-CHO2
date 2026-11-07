@@ -16,7 +16,7 @@
   <meta name="theme-color" content="#fffaf2" />
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="style.css?v=48.0.3" />
-  <link rel="stylesheet" href="tangocho2-layout-fix.css?v=0.7.0" />
+  <link rel="stylesheet" href="tangocho2-layout-fix.css?v=0.7.1" />
   <link rel="stylesheet" href="tangocho2-theme.css?v=0.3.0" data-tc2-theme="1" />
   <style>
     html{background:#fffaf2}
@@ -297,7 +297,7 @@
     });
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=0.42.3", { updateViaCache: 'none' })
+        navigator.serviceWorker.register("./service-worker.js?v=0.42.4", { updateViaCache: 'none' })
           .then(reg => reg.update()).catch(console.error);
       });
     }
