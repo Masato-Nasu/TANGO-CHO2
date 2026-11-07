@@ -4,7 +4,7 @@
   const CACHE='tangoCho2WordLookup:v1';
   const norm=s=>String(s||'').trim().toLowerCase().replace(/’/g,"'");
   const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))||fallback;}catch{return fallback;}};
-  const selector='#commuteReview .commute-passage[lang="en"], #commuteReview .commute-review-prompt, #commuteReview .commute-review-options span, #commutePractice .commute-passage[lang="en"], #commutePractice .commute-question legend, #commutePractice .commute-option span, #part5Section .p5-sentence, #tc2FiveResult .tc2-sentence';
+  const selector='#commuteReview .commute-passage[lang="en"], #commuteReview .commute-review-prompt, #commuteReview .commute-review-options span, #commutePractice .commute-passage[lang="en"], #commutePractice .commute-question legend, #commutePractice .commute-option span';
   let dialog,selected=null,revision=0,scheduled=false;
   const pending=new Map();
   const savedWord=word=>(typeof loadWords==='function'?loadWords():[]).find(item=>norm(item.word)===norm(word));
@@ -133,9 +133,9 @@
     });
     document.addEventListener('click',activate,true);document.addEventListener('keydown',activate,true);
     const observer=new MutationObserver(()=>{if(!scheduled){scheduled=true;requestAnimationFrame(enhance);}});
-    for(const id of ['commuteSection','part5Section','fortuneSection']){const root=document.getElementById(id);if(root)observer.observe(root,{childList:true,subtree:true});}
+    const root = document.getElementById('commuteSection');
+    if (root) observer.observe(root, {childList:true,subtree:true});
     enhance();
-    const root=document.getElementById('commuteSection');if(root){const note=document.createElement('p');note.className='note';note.textContent='英文中の単語をタップすると意味を確認できます。選択肢は○を押して選んでください。未保存の意味の取得には通信を使います。';root.querySelector('.card')?.append(note);}
   }
   document.addEventListener('DOMContentLoaded',init);
 })();

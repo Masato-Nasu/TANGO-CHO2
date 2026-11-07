@@ -1,6 +1,6 @@
 /* TANGO-CHO2 Service Worker */
 const CACHE_PREFIX = 'tango-cho2-cache-';
-const CACHE_NAME = `${CACHE_PREFIX}v0.41.5`;
+const CACHE_NAME = `${CACHE_PREFIX}v0.42.0`;
 
 const CORE_ASSETS = [
   "./",
@@ -9,20 +9,16 @@ const CORE_ASSETS = [
   "./vocab_pool.js",
   "./style.css?v=48.0.3",
   "./tangocho2-theme.css?v=0.3.0",
-  "./tangocho2-layout-fix.css?v=0.6.0",
+  "./tangocho2-layout-fix.css?v=0.7.0",
   "./tangocho2-storage-shim.js?v=0.2.0",
   "./script.js?v=48.0.10",
   "./api-response-fix.js?v=48.0.8",
-  "./tangocho2-fivewords.js?v=0.11.2",
-  "./tangocho2-auto-register.js?v=0.6.0",
   "./tangocho2-example-sync.js?v=0.4.0",
   "./tangocho2-behavior.js?v=0.3.1",
-  "./tangocho2-progress.js?v=0.7.2",
   "./tangocho2-grammar.js?v=0.1.1",
-  "./tangocho2-commute.js?v=0.8.3",
-  "./tangocho2-notifications.js?v=0.4.0",
-  "./tangocho2-word-tap.js?v=0.2.0",
-  "./tangocho2-part5.js?v=0.16.1",
+  "./tangocho2-commute.js?v=0.9.0",
+  "./tangocho2-notifications.js?v=0.4.1",
+  "./tangocho2-word-tap.js?v=0.2.1",
   "./tangocho2-study-time.js?v=0.2.0",
   "./tangocho2-backup.js?v=0.13.0",
   "./tangocho2-spelling.js?v=0.7.1",
@@ -40,17 +36,10 @@ const CORE_ASSETS = [
   "./data/WORDNET_LICENSE.txt"
 ];
 
-const EXTERNAL_ASSETS = [
-  "https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"
-];
-
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
     await cache.addAll(CORE_ASSETS);
-    for (const url of EXTERNAL_ASSETS) {
-      try { await cache.add(url); } catch (_) {}
-    }
     await self.skipWaiting();
   })());
 });
@@ -66,8 +55,7 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
-  const isExternalAllowed = EXTERNAL_ASSETS.includes(url.href);
-  if (url.origin !== self.location.origin && !isExternalAllowed) return;
+  if (url.origin !== self.location.origin) return;
 
   const accept = event.request.headers.get("accept") || "";
   const isNav = event.request.mode === "navigate" || accept.includes("text/html");
@@ -75,18 +63,6 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_NAME);
-
-    if (isExternalAllowed) {
-      const cached = await cache.match(event.request);
-      if (cached) return cached;
-      try {
-        const fresh = await fetch(event.request);
-        if (fresh && fresh.ok) cache.put(event.request, fresh.clone());
-        return fresh;
-      } catch (_) {
-        return cached || Response.error();
-      }
-    }
 
     if (isNav) {
       try {

@@ -9,7 +9,7 @@ function fixture(id,complete){return {id,index:complete?2:1,complete,answerLayou
  },{active:fixture('running',false),archive:[{id:'past',at:new Date(Date.now()-86400000).toISOString(),session:fixture('past',true)}]});
  await page.goto('http://127.0.0.1:8799/');await page.locator('[data-section="commuteSection"]').click();
  const before=await page.evaluate(()=>localStorage.getItem('tangoCho2Commute:v1'));
- await page.locator('[data-history-open="past"]').click();await page.locator('#commuteReview').waitFor({state:'visible'});
+ await page.locator('#commuteHistoryPanel summary').click();await page.locator('[data-history-open="past"]').click();await page.locator('#commuteReview').waitFor({state:'visible'});
  assert((await page.locator('#commuteReview').innerText()).includes('自分の回答：B. Ignore the report'));assert((await page.locator('#commuteReview').innerText()).includes('正答：A. Read the report'));
  await context.setOffline(true);await page.locator('#commuteReview .commute-passage [data-lookup-word="report"]').first().click();assert.equal(await page.locator('#tc2LookupMeaning').innerText(),'履歴の報告書');await page.locator('#tc2LookupClose').click();
  await page.locator('button[data-review-group="1"]').click();assert.equal(await page.locator('#commuteReview .commute-feedback').count(),5);

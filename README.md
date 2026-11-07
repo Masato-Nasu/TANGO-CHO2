@@ -15,6 +15,17 @@
 
 ---
 
+## 使い方
+
+- **通勤テスト**でPart 7・Part 5・語彙を練習できます。「続きから」で解きかけのテストを再開し、「テストを始める」で保存済みの問題を開きます。英文中の単語をタップして意味を調べ、単語帳に保存できます。登録語は次の作問に使います。
+- **単語帳**で登録語の検索・編集、新しい単語の追加、単語クイズができます。
+- **問題の準備・設定**で、目標点・出題内容・AI設定・オフライン用の問題を管理します。学習通知と直近1週間の回答は通勤テストの画面から確認できます。
+
+5 WORDSと単独のPART 5タブは通勤テストに統合しました。作問にはOpenAI APIキーを使い、準備済みのテストはオフラインでも解けます。
+
+<details>
+<summary>旧画面と過去の更新記録</summary>
+
 ## UI Preview
 
 <p align="center">
@@ -418,3 +429,5 @@ Wi-Fi接続を判定できる端末では、アプリを開くと選択中の目
 - 800/900点のAI作問は主語・修飾語・時の関係を読む問題を重視します。文法ミックスの固定問題はスコア別ではなく共通の練習問題です。
 
 文法参照：[Cambridge make](https://dictionary.cambridge.org/grammar/british-grammar/make)、[have something done](https://dictionary.cambridge.org/grammar/british-grammar/have-something-done)、[get](https://dictionary.cambridge.org/grammar/british-grammar/get)、[let](https://dictionary.cambridge.org/grammar/british-grammar/let)。問題文は独自に作成しています。
+
+</details>

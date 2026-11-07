@@ -16,7 +16,7 @@
   <meta name="theme-color" content="#fffaf2" />
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="style.css?v=48.0.3" />
-  <link rel="stylesheet" href="tangocho2-layout-fix.css?v=0.6.0" />
+  <link rel="stylesheet" href="tangocho2-layout-fix.css?v=0.7.0" />
   <link rel="stylesheet" href="tangocho2-theme.css?v=0.3.0" data-tc2-theme="1" />
   <style>
     html{background:#fffaf2}
@@ -40,7 +40,7 @@
       const check = () => {
         if (completed || !domReady) return;
         const category = document.getElementById('status');
-        if (!document.getElementById('tc2FiveLevel') || !document.getElementById('tc2ProgressHero') || category?.parentElement.style.display !== 'none') return;
+        if (!document.getElementById('commutePrimary') || category?.parentElement.style.display !== 'none') return;
         completed = true;
         observer.disconnect();
         requestAnimationFrame(() => {
@@ -69,17 +69,15 @@
     <h1>TANGO-CHO2</h1>
   </header>
 
-  <nav class="tab-bar">
-    <button class="tab-button active" data-section="addSection">追加</button>
+  <nav class="tab-bar" aria-label="メインメニュー">
+    <button class="tab-button active" data-section="commuteSection">通勤テスト</button>
     <button class="tab-button" data-section="listSection">単語帳</button>
-    <button class="tab-button" data-section="quizSection">クイズ</button>
-    <button class="tab-button" data-section="fortuneSection">5 WORDS</button>
-    <button class="tab-button" data-section="part5Section">PART 5</button>
-    <button class="tab-button" data-section="commuteSection">通勤練習</button>
   </nav>
 
   <main class="main">
-    <section id="addSection" class="section active">
+    <section id="commuteSection" class="section active"></section>
+    <section id="addSection" class="section">
+      <button class="ghost-btn" type="button" data-back-to-list>← 単語帳に戻る</button>
       <details id="connSettingsCard" class="card">
         <summary class="summary">⚙️ AI設定（BYOK） <span id="connStatus" class="conn-status"></span></summary>
 
@@ -192,6 +190,14 @@
 
     <section id="listSection" class="section">
       <h2>単語帳</h2>
+      <div class="field-row wordbook-actions">
+        <button class="tab-button" type="button" data-section="addSection">単語を追加</button>
+        <button class="tab-button" type="button" data-section="quizSection">単語クイズ</button>
+      </div>
+      <details class="card">
+        <summary>学習時間</summary>
+        <div id="tc2ProgressHero"></div>
+      </details>
       <div class="card">
         <div class="list-header">
           <span>登録語数: <span id="wordCount">0</span></span>
@@ -227,6 +233,7 @@
     </section>
 
     <section id="quizSection" class="section">
+      <button class="ghost-btn" type="button" data-back-to-list>← 単語帳に戻る</button>
       <h2>クイズ（4択）</h2>
 
       <div class="card">
@@ -261,71 +268,31 @@
         </div>
       </div>
     </section>
-    <section id="fortuneSection" class="section">
-      <h2>Fortune (EN) × TANGO-CHO</h2>
-
-      <div class="card" id="fortuneControlsCard">
-        <div class="two-col">
-          <div>
-            <label class="field-label" for="fortuneBirth">Birth date</label>
-            <input id="fortuneBirth" type="date" />
-          </div>
-          <div>
-            <label class="field-label" for="fortuneDate">Target date</label>
-            <input id="fortuneDate" type="date" />
-          </div>
-        </div>
-
-        <div class="two-col" style="margin-top:10px;">
-          <div>
-            <label class="field-label" for="fortuneLevel">English level</label>
-            <select id="fortuneLevel" class="select">
-              <option value="jhs">中学生向き</option>
-              <option value="hs">高校生向き</option>
-              <option value="adult" selected>大人向き</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="field-row action-row">
-          <button id="fortuneGenBtn" class="primary-btn" type="button">Generate</button>
-        </div>
-
-        <p class="note" style="margin-top:8px;">
-</div>
-
-      <div class="card">
-        <div id="fortuneResults" class="fortune-results"></div>
-      </div>
-    </section>
-    <section id="commuteSection" class="section"></section>
-    <section id="part5Section" class="section"></section>
-    <section id="p5WordDetailSection" class="section" aria-label="単語の詳細"></section>
   </main>
 
   <footer class="app-footer">
 </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
   <script src="bank_enja.js"></script>
   <script src="vocab_pool.js"></script>
   <script src="tangocho2-storage-shim.js?v=0.2.0"></script>
   <script src="script.js?v=48.0.10"></script>
   <script src="api-response-fix.js?v=48.0.8"></script>
-  <script src="tangocho2-fivewords.js?v=0.11.2"></script>
-  <script src="tangocho2-auto-register.js?v=0.6.0"></script>
+  <script src="tangocho2-behavior.js?v=0.3.1"></script>
   <script src="tangocho2-grammar.js?v=0.1.1"></script>
-  <script src="tangocho2-commute.js?v=0.8.3"></script>
-  <script src="tangocho2-notifications.js?v=0.4.0"></script>
-  <script src="tangocho2-word-tap.js?v=0.2.0"></script>
-  <script src="tangocho2-part5.js?v=0.16.1"></script>
+  <script src="tangocho2-commute.js?v=0.9.0"></script>
+  <script src="tangocho2-notifications.js?v=0.4.1"></script>
+  <script src="tangocho2-word-tap.js?v=0.2.1"></script>
   <script src="tangocho2-study-time.js?v=0.2.0"></script>
   <script src="tangocho2-backup.js?v=0.13.0"></script>
   <script src="tangocho2-spelling.js?v=0.7.1"></script>
   <script>
+    document.querySelectorAll("[data-back-to-list]").forEach(button => {
+      button.addEventListener("click", () => document.querySelector('[data-section="listSection"]').click());
+    });
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=0.41.5", { updateViaCache: 'none' })
+        navigator.serviceWorker.register("./service-worker.js?v=0.42.0", { updateViaCache: 'none' })
           .then(reg => reg.update()).catch(console.error);
       });
     }

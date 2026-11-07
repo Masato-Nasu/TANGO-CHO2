@@ -97,7 +97,12 @@
       throw new Error(type === 'offline' ? 'オフラインのため準備を停止しました。保存済みの問題は解けます。' : 'Wi-Fi接続を確認できないため準備を停止しました。');
     }
   }
-  function queueMessage(text) { root.querySelector('#commuteOfflineStatus').textContent = text; }
+  function queueMessage(text) {
+    root.querySelector('#commuteOfflineStatus').textContent = text;
+    const progress = root.querySelector('#commutePreparation');
+    progress.textContent = preparingOffline || preparationError ? text : '';
+    progress.hidden = Boolean(availableSets()) || !progress.textContent;
+  }
   function saveQueue(next) {
     localStorage.setItem(QUEUE_KEY, JSON.stringify(next));
     queue = next;
@@ -109,6 +114,15 @@
     root.querySelector('#commutePrepare').disabled=busy||availableSets()>=2||['cellular','bluetooth','ethernet','wimax','offline','none'].includes(networkType());
     root.querySelector('#commuteStart').disabled=busy;
     root.querySelector('#commuteStart').textContent=availableSets()>=2?'保存済みの問題を確認':active?'別の問題を追加する':'新しい問題を作る';
+    const primary = root.querySelector('#commutePrimary');
+    const ready = queue[0];
+    const offline = networkType() === 'offline';
+    primary.disabled = !active && (!ready ? busy || offline : busy && !preparingOffline);
+    primary.textContent = active ? '続きから' : ready ? (hasAnswers(ready) ? '続きから' : 'テストを始める')
+      : busy ? '問題を準備中…' : offline ? '保存済みの問題なし' : '問題を作って始める';
+    root.querySelector('#commuteOfflineHint').hidden = !offline || Boolean(active || ready);
+    if (active || ready) root.querySelector('#commutePreparation').hidden = true;
+
   }
   function networkMessage() {
     if(busy)return;
@@ -225,7 +239,10 @@
     reviewItem=archiveItems().find(item=>item.id===id)||null;
     if(!reviewItem&&session?.id===id)reviewItem={id,at:session.completedAt||session.answeredAt||new Date().toISOString(),session:JSON.parse(JSON.stringify(session))};
     if(!reviewItem){message('この回答は保存期間を過ぎているか、内容が保存されていません。');return;}
-    reviewIndex=0;renderReview();root.querySelector('#commuteReview').scrollIntoView({block:'start'});
+    reviewIndex=0;
+    root.querySelector('#commuteHistoryPanel').open = true;
+    renderReview();
+    root.querySelector('#commuteReview').scrollIntoView({block:'start'});
   }
   function render() {
     const area = root.querySelector('#commutePractice');
@@ -330,7 +347,7 @@
   }
   async function start() {
     if(busy)return;
-    if(availableSets()>=2){message(`${availableSets()}回分は保存済みです。下の一覧から問題を選んで切り替えてください。`);root.querySelector('#commuteOfflineList').scrollIntoView({block:'start'});return;}
+    if(availableSets()>=2){root.querySelector('#commuteSettings').open=true;message(`${availableSets()}回分は保存済みです。下の一覧から問題を選んで切り替えてください。`);root.querySelector('#commuteOfflineList').scrollIntoView({block:'start'});return;}
     if(!archiveSession(session))return;
     busy=true;renderQueue();
     const mode=root.querySelector('#commuteMode').value;
@@ -341,7 +358,8 @@
       const item=await buildSession(mode==='all'?TYPES:[mode],level);
       if(activeSet()){
         item.preparedAt=new Date().toISOString();saveQueue([...queue,item]);
-        message('別の問題を追加して保存しました。解きかけの回答はそのままです。');
+        message('別の問題を追加しました。');
+        root.querySelector('#commuteSettings').open = true;
         root.querySelector('#commuteOfflineList').scrollIntoView({block:'start'});
       }else{
         localStorage.setItem(KEY,JSON.stringify(item));session=item;
@@ -349,7 +367,10 @@
         root.querySelector('#commutePractice').scrollIntoView({block:'start'});
       }
       created=true;preparationError='';
-    }catch(e){message(e.message||'問題を作成・保存できませんでした。');}
+    }catch(e){
+      message(e.message||'問題を作成・保存できませんでした。');
+      if (typeof getOpenAiApiKey === 'function' && !getOpenAiApiKey()) root.querySelector('#commuteSettings').open = true;
+    }
     finally{busy=false;renderQueue();networkMessage();if(created){autoAttempted=false;schedulePreparation();}}
   }
   function init() {
@@ -362,7 +383,38 @@
     const storedQueue = read(QUEUE_KEY, []);
     queue = Array.isArray(storedQueue) ? storedQueue.filter(item => validSession(item) && !item.complete && item.id !== session?.id).map(distributeAnswers) : [];
     if (queue.some((item,index) => item !== storedQueue[index])) { try { localStorage.setItem(QUEUE_KEY, JSON.stringify(queue)); } catch {} }
-    root.innerHTML = `<div class="card"><h2>通勤練習</h2><p class="note">目標に合わせた新しい問題で、読解・文法・語彙を練習。</p><label class="field-label" for="commuteLevel">目標レベル</label><select class="select" id="commuteLevel">${Object.keys(LEVELS).map(level => `<option value="${level}">${level}点</option>`).join('')}</select><p class="note">レベル変更は次に作る問題から反映されます。</p><label class="field-label" for="commuteMode">出題内容</label><select class="select" id="commuteMode"><option value="all">全部 · 13問</option>${TYPES.map(t => `<option>${t}</option>`).join('')}</select><p class="note">全部：Part 7 英文1つ＋3問 ／ Part 5 5問 ／ 語彙5問。作成には設定済みのOpenAI APIキーを使います。作成後はオフラインでも解答できます。Part 5は使役動詞・複数形・時制を各1問と、単語帳の登録語を使う問題を最大2問出題します。Part 7の長文にも登録語を最大2語取り入れ、語彙問題でも登録語を優先します。足りない分は通常の問題で補います。</p><button class="primary-btn" type="button" id="commuteStart">新しい問題を作る</button><button class="ghost-btn" type="button" id="commuteResume" hidden>解答を振り返る</button><p id="commuteMsg" role="status"></p></div><div class="card"><h3>オフライン用の問題</h3><label class="field-row"><input id="commuteAutoPrepare" type="checkbox" style="width:20px;height:20px">Wi-Fiで開いたとき、2回分を自動準備</label><p class="note">解答中と保存済みを合わせて2回分を準備します（「全部」は1回13問）。作成にはOpenAI APIを使います。画面を開いて準備完了をお待ちください。途中で止まった場合は、同じレベルで準備を再開すると、完成したパートの続きから作ります。</p><button type="button" class="secondary-btn" id="commutePrepare">Wi-Fiで2回分を準備</button><p id="commuteOfflineStatus" role="status"></p><div id="commuteOfflineList"></div><p class="note">問題を切り替えても、回答は保存されます。いつでも元の問題の続きに戻れます。</p></div><section class="card"><h3>直近1週間の回答</h3><p class="note">今日を含む7日分をこの端末に保存します（日本時間）。履歴を開いても練習中の回答は変わりません。</p><p id="commuteArchiveStatus" role="status"></p><div id="commuteHistory"></div><div id="commuteReview" hidden></div></section><div id="commutePractice"></div>`;
+    root.innerHTML = `
+      <div class="card">
+        <h2>通勤テスト</h2>
+        <p class="note">単語帳の語を使って、Part 7・Part 5・語彙を練習。</p>
+        <button class="primary-btn full-width" type="button" id="commutePrimary">問題を作って始める</button>
+        <button class="ghost-btn" type="button" id="commuteResume" hidden>解答を振り返る</button>
+        <p id="commuteOfflineHint" class="note" hidden>オンラインで問題を用意すると、次回はオフラインで解けます。</p>
+        <p id="commutePreparation" class="note" role="status" hidden></p>
+        <p id="commuteMsg" role="status"></p>
+      </div>
+      <div id="commutePractice"></div>
+      <details class="card" id="commuteSettings">
+        <summary>問題の準備・設定</summary>
+        <label class="field-label" for="commuteLevel">目標レベル</label>
+        <select class="select" id="commuteLevel">${Object.keys(LEVELS).map(level => `<option value="${level}">${level}点</option>`).join('')}</select>
+        <label class="field-label" for="commuteMode">出題内容</label>
+        <select class="select" id="commuteMode"><option value="all">全部 · 13問</option>${TYPES.map(t => `<option>${t}</option>`).join('')}</select>
+        <button class="secondary-btn" type="button" id="commuteStart">新しい問題を作る</button>
+        <button class="ghost-btn" type="button" id="commuteAiSettings">AI設定</button>
+        <h3>オフライン用の問題</h3>
+        <label class="field-row"><input id="commuteAutoPrepare" type="checkbox" style="width:20px;height:20px">Wi-Fiで開いたとき、2回分を自動準備</label>
+        <p class="note">作問にはOpenAI APIキーを使います。保存後はオフラインで解答できます。</p>
+        <button type="button" class="secondary-btn" id="commutePrepare">Wi-Fiで2回分を準備</button>
+        <p id="commuteOfflineStatus" role="status"></p>
+        <div id="commuteOfflineList"></div>
+      </details>
+      <details class="card" id="commuteHistoryPanel">
+        <summary>直近1週間の回答</summary>
+        <p id="commuteArchiveStatus" role="status"></p>
+        <div id="commuteHistory"></div>
+        <div id="commuteReview" hidden></div>
+      </details>`;
     const style = document.createElement('style');
     style.textContent = `#commuteSection [hidden]{display:none!important}#commuteSection{overflow-wrap:anywhere}.commute-passage{white-space:pre-wrap;line-height:1.9;padding:14px;border:1px solid var(--border,#ccc);border-radius:12px;font-size:1.05rem}.commute-question{border:0;padding:18px 0;margin:12px 0}.commute-question legend{line-height:1.8;font-size:1.05rem}.commute-option{display:flex;align-items:center;gap:12px;padding:14px;margin:8px 0;border:1px solid var(--border,#ccc);border-radius:12px;cursor:pointer;min-height:48px}.commute-option input{width:20px;height:20px;flex-shrink:0}.commute-correct{background:#e5f6ed;color:#13513d;border-color:#168061}.commute-wrong{background:#fbece8;color:#782d20;border-color:#b34837}.commute-feedback{line-height:1.8}.commute-term{padding:14px 0;border-top:1px solid var(--border,#ccc)}.commute-offline-item{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:12px 0;border-top:1px solid var(--border,#ddd)}.commute-offline-item>span{flex:1;min-width:150px;overflow-wrap:anywhere}.commute-offline-item small{color:var(--muted,#666)}#commuteSection .commute-history-item{display:block;width:100%;text-align:left;white-space:normal}#commuteReview{margin-top:18px;border-top:1px solid var(--border,#ccc);padding-top:12px}#commuteReview li{padding:12px;margin:6px 0;line-height:1.7}#commuteSection button{min-height:44px;margin:6px 4px 6px 0}`;
     document.head.appendChild(style);
@@ -395,6 +447,18 @@
       }
     });
     root.querySelector('#commuteStart').addEventListener('click',start);
+    root.querySelector('#commutePrimary').addEventListener('click', () => {
+      if (activeSet()) root.querySelector('#commutePractice').scrollIntoView({block:'start'});
+      else if (queue.length) startPrepared(queue[0].id);
+      else void start();
+    });
+    root.querySelector('#commuteAiSettings').addEventListener('click', () => {
+      document.querySelector('[data-section="addSection"]').click();
+      const settings = document.getElementById('connSettingsCard');
+      settings.open = true;
+      settings.scrollIntoView({block:'start'});
+    });
+
     root.querySelector('#commuteResume').addEventListener('click',()=>{if(session)openReview(session.id);});
     root.addEventListener('click',ev=>{
       const link=ev.target.closest('[data-history-open]');if(link){openReview(link.dataset.historyOpen);return;}
@@ -440,7 +504,9 @@
           } catch { message('成績履歴を保存できませんでした。'); }
           archiveSession(session);
         }
-        persist(); render(); root.scrollIntoView({block:'start'});
+        persist(); render();
+        if (session.complete) root.scrollIntoView({block:'start'});
+        else root.querySelector('#commutePractice').scrollIntoView({block:'start'});
       }
       const button = ev.target.closest('[data-commute-save], [data-commute-speak]');
       if (button && g.graded) {
@@ -461,7 +527,6 @@
     if(session?.groups.some(group=>group.graded))archiveSession(session,previousAt);
     try{localStorage.setItem(ARCHIVE,JSON.stringify(archiveItems()));}catch{}
     history(); render();
-    if (session && !session.complete) message('前回の続きから解答できます。');
     networkMessage();
     schedulePreparation();
   }

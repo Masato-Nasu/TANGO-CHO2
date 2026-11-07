@@ -24,14 +24,15 @@ async function init(type='wifi',storage={},failAt=0){
  a=await init('wifi',{'tangoCho2CommuteLevel:v1':'700'});await wait(()=>JSON.parse(a.w.localStorage.getItem(Q)||'[]').length===2);
  assert.equal(a.calls.length,6);assert(a.calls.every(x=>x.level===700));let queued=JSON.parse(a.w.localStorage.getItem(Q));assert.equal(new Set(queued.map(x=>x.id)).size,2);assert.equal(a.w.localStorage.getItem(S),null);
  const storage=a.snapshot();a.dom.window.close();a=await init('wifi',storage);await new Promise(r=>setTimeout(r,130));assert.equal(a.calls.length,0);
- a.d.querySelector('[data-offline-start]').click();assert.equal(JSON.parse(a.w.localStorage.getItem(Q)).length,1);const active=JSON.parse(a.w.localStorage.getItem(S));assert(active.preparedAt);
+ const primary=a.d.getElementById('commutePrimary');assert.equal(primary.textContent,'テストを始める');
+ primary.click();assert.equal(primary.textContent,'続きから');assert.equal(JSON.parse(a.w.localStorage.getItem(Q)).length,1);const active=JSON.parse(a.w.localStorage.getItem(S));assert(active.preparedAt);
  const storage2=a.snapshot();a.dom.window.close();a=await init('wifi',storage2);await new Promise(r=>setTimeout(r,130));assert.equal(a.calls.length,0,'active prepared set counts toward the two-set limit');
  a.connection.type='offline';a.w.dispatchEvent(new a.w.Event('offline'));
  for(let group=0;group<3;group++){
   for(let i=0;i<(group===0?3:5);i++){const current=JSON.parse(a.w.localStorage.getItem(S));const radio=a.d.querySelector(`[name="commuteQ${i}"][value="${current.groups[current.index].questions[i].answer}"]`);radio.checked=true;radio.dispatchEvent(new a.w.Event('change',{bubbles:true}));}
   a.d.getElementById('commuteGrade').click();assert.equal(a.d.querySelectorAll('.commute-feedback').length,group===0?3:5);a.d.getElementById('commuteNext').click();
  }
- assert.match(a.d.getElementById('commutePractice').textContent,/13 \/ 13/);a.d.querySelector('[data-offline-start]').click();assert.notEqual(JSON.parse(a.w.localStorage.getItem(S)).id,active.id);assert.equal(a.calls.length,0);assert.equal(JSON.parse(a.w.localStorage.getItem(Q)).length,0);a.dom.window.close();
+ assert.match(a.d.getElementById('commutePractice').textContent,/13 \/ 13/);a.d.getElementById('commutePrimary').click();assert.notEqual(JSON.parse(a.w.localStorage.getItem(S)).id,active.id);assert.equal(a.calls.length,0);assert.equal(JSON.parse(a.w.localStorage.getItem(Q)).length,0);a.dom.window.close();
  a=await init('wifi',{},4);await wait(()=>a.d.getElementById('commuteOfflineStatus').textContent.includes('AI unavailable'));assert.equal(JSON.parse(a.w.localStorage.getItem(Q)).length,1);a.w.dispatchEvent(new a.w.Event('offline'));assert(a.d.getElementById('commuteOfflineStatus').textContent.includes('AI unavailable'));a.d.dispatchEvent(new a.w.Event('visibilitychange'));await wait(()=>JSON.parse(a.w.localStorage.getItem(Q)).length===2);assert.equal(a.calls.length,7);a.dom.window.close();
  // A slow second set must neither lock the saved set nor repeat completed parts.
  a=await init('wifi',{[Q]:JSON.stringify([queued[0]])});

@@ -1,24 +1,14 @@
-/* TANGO-CHO2 v0.4 layout alignment */
-body #tc2ProgressHero.tc2-progress-hero{
-  width:calc(100% - 32px)!important;
-  max-width:688px!important;
-  box-sizing:border-box!important;
-  margin:8px auto 14px!important;
+.tab-bar:has([data-section="commuteSection"]){
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
 }
-
-/* Keep registered 5 WORDS cards visually white instead of dimming them. */
-html body #fortuneSection .tc2-word[data-registered="1"]{
-  opacity:1!important;
-  background:#fff!important;
-  color:var(--ink)!important;
+.wordbook-actions{
+  margin:0 0 12px;
 }
-
-@media(max-width:420px){
-  body #tc2ProgressHero.tc2-progress-hero{
-    width:calc(100% - 32px)!important;
-    margin:8px auto 14px!important;
-  }
+.wordbook-actions .tab-button{
+  flex:1;
 }
-
-/* Six legible touch targets, arranged in two rows. */
-.tab-bar:has([data-section="commuteSection"]){grid-template-columns:repeat(3,minmax(0,1fr))!important;}
+body:has(#addSection.active, #quizSection.active) .tab-bar [data-section="listSection"]{
+  background:var(--ink)!important;
+  border-color:var(--ink)!important;
+  color:#fff!important;
+}

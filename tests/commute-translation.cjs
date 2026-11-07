@@ -7,7 +7,7 @@ async function init(storage){const dom=new JSDOM(fs.readFileSync(path.join(repo,
  let {dom,w,d}=await init({[KEY]:JSON.stringify(saved),'tangoCho2CommuteAutoPrepare:v1':'false'});
  assert(!d.querySelector('#commutePractice .commute-full-translation'),'hide translation before grading');
  d.getElementById('commuteGrade').click();
- function check(container){const translation=container.querySelector('.commute-full-translation');assert(translation);assert.equal(translation.querySelector('p').textContent,full);assert(!translation.closest('details'));assert(translation.compareDocumentPosition(container.querySelector('.commute-question'))&w.Node.DOCUMENT_POSITION_FOLLOWING);assert(!translation.querySelector('担当'));}
+ function check(container){const translation=container.querySelector('.commute-full-translation');assert(translation);assert.equal(translation.querySelector('p').textContent,full);assert.equal(translation.closest('details:not([open])'),null);assert(translation.compareDocumentPosition(container.querySelector('.commute-question'))&w.Node.DOCUMENT_POSITION_FOLLOWING);assert(!translation.querySelector('担当'));}
  check(d.getElementById('commutePractice'));
  assert.equal(JSON.parse(w.localStorage.getItem(KEY)).groups[0].passageTranslation,full);
  const storage=Object.fromEntries(Object.keys(w.localStorage).map(k=>[k,w.localStorage.getItem(k)]));dom.window.close();({dom,w,d}=await init(storage));

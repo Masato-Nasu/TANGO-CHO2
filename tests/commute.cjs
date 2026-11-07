@@ -34,13 +34,13 @@ const fixture = type => ({title:'Office update',passage:type==='Part 7'?Array(18
  d.getElementById('commuteLevel').value='600';d.getElementById('commuteLevel').dispatchEvent(new w.Event('change'));
  assert.deepEqual([...d.querySelectorAll('#commuteLevel option')].map(o=>o.value),['600','700','800','900']);
  let calls=[];w.callOpenAiJson=async args=>{assert.equal(JSON.parse(args.input).level,600);assert.match(args.instruction,/targeting TOEIC 600/);const type=JSON.parse(args.input).type;calls.push(type);return fixture(type);};
- d.getElementById('commuteStart').click();await tick();await tick();assert.deepEqual(calls,['Part 7','Part 5','語彙']);
+ d.getElementById('commutePrimary').click();await tick();await tick();assert.deepEqual(calls,['Part 7','Part 5','語彙']);
  assert.equal(d.querySelectorAll('.commute-question').length,3);
  assert.equal(d.querySelectorAll('.commute-feedback').length,0);
  d.getElementById('commuteGrade').click();assert.match(d.getElementById('commuteMsg').textContent,/すべて/);
  const choose=(i,value=JSON.parse(w.localStorage.getItem('tangoCho2Commute:v1')).groups[JSON.parse(w.localStorage.getItem('tangoCho2Commute:v1')).index].questions[i].answer)=>{const radio=d.querySelector(`[name="commuteQ${i}"][value="${value}"]`);radio.checked=true;radio.dispatchEvent(new w.Event('change',{bubbles:true}));};
  choose(0); const saved=Object.fromEntries(Object.keys(w.localStorage).map(k=>[k,w.localStorage.getItem(k)]));dom.window.close();
- ({dom,w,d}=await init(saved));assert(d.querySelector('[name="commuteQ0"]:checked'));assert.equal(d.getElementById('commuteLevel').value,'600');assert.match(d.getElementById('commutePractice').textContent,/600点/);
+ ({dom,w,d}=await init(saved));assert.equal(d.getElementById('commutePrimary').textContent,'続きから');assert(d.querySelector('[name="commuteQ0"]:checked'));assert.equal(d.getElementById('commuteLevel').value,'600');assert.match(d.getElementById('commutePractice').textContent,/600点/);
  for(let group=0;group<3;group++){
   const count=group===0?3:5;
   for(let i=0;i<count;i++)choose(i);

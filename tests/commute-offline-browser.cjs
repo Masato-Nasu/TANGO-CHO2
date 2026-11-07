@@ -17,7 +17,9 @@ const repo=path.resolve(__dirname,'..');
  await page.evaluate(()=>navigator.serviceWorker.ready);await page.waitForFunction(()=>Boolean(navigator.serviceWorker.controller));
  await page.locator('[data-section="commuteSection"]').click();assert.equal(await page.locator('[data-offline-start]').count(),2);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
  await context.setOffline(true);await page.reload();await page.locator('[data-section="commuteSection"]').click();assert.equal(await page.locator('[data-offline-start]').count(),2);assert.equal(await page.evaluate(()=>aiCalls),0);
- await page.locator('[data-offline-start]').first().click();
+ await page.locator('#commutePrimary').click();
+ await page.locator('#commuteSettings summary').click();
+ assert.equal(await page.locator('#commutePrimary').innerText(),'続きから');
  const firstId=await page.evaluate(()=>JSON.parse(localStorage.getItem('tangoCho2Commute:v1')).id);
  const firstAnswer=await page.evaluate(()=>JSON.parse(localStorage.getItem('tangoCho2Commute:v1')).groups[0].questions[0].answer);
  await page.locator(`[name="commuteQ0"][value="${firstAnswer}"]`).check();
@@ -34,6 +36,6 @@ const repo=path.resolve(__dirname,'..');
   }
   await page.locator('#commuteGrade').click();await page.locator('#commuteNext').click();
  }
- assert((await page.locator('#commutePractice').innerText()).includes('13 / 13'));await page.locator('[data-offline-start]').click();assert(await page.locator('[name="commuteQ0"]').first().isVisible());assert.equal(await page.evaluate(()=>aiCalls),0);assert.deepEqual(errors,[]);assert.deepEqual(dialogs,[]);
+ assert((await page.locator('#commutePractice').innerText()).includes('13 / 13'));await page.locator('#commutePrimary').click();assert(await page.locator('[name="commuteQ0"]').first().isVisible());assert.equal(await page.evaluate(()=>aiCalls),0);assert.deepEqual(errors,[]);assert.deepEqual(dialogs,[]);
  console.log('PASS: real mobile PWA caches both sets, reloads offline, grades all 13 questions and opens the second set with no AI calls or page errors');await browser.close();server.close();
 })().catch(e=>{console.error(e);process.exit(1)});
