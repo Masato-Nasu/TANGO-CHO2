@@ -70,8 +70,8 @@
   </header>
 
   <nav class="tab-bar" aria-label="メインメニュー">
-    <button class="tab-button active" data-section="commuteSection">通勤テスト</button>
     <button class="tab-button" data-section="listSection">単語帳</button>
+    <button class="tab-button active" data-section="commuteSection">通勤テスト</button>
   </nav>
 
   <main class="main">
@@ -292,7 +292,7 @@
     });
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=0.42.0", { updateViaCache: 'none' })
+        navigator.serviceWorker.register("./service-worker.js?v=0.42.1", { updateViaCache: 'none' })
           .then(reg => reg.update()).catch(console.error);
       });
     }
