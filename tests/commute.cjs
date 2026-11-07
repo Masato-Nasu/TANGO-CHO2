@@ -32,7 +32,7 @@ const fixture = type => ({title:'Office update',passage:type==='Part 7'?Array(18
  w.eval('enrichTermViaAi = () => new Promise(r => window.resolveEnrich = r)');
  d.getElementById('aiAssistBtn').click();await tick();input('fifth');w.resolveEnrich({meaning:'古い意味',synonyms:[],example:'old',exampleTranslation:'旧',memo:'old'});await tick();assert.equal(d.getElementById('meaning').value,'');
  d.getElementById('commuteLevel').value='600';d.getElementById('commuteLevel').dispatchEvent(new w.Event('change'));
- assert.deepEqual([...d.querySelectorAll('#commuteLevel option')].map(o=>o.value),['600','700','800','900']);
+ assert.deepEqual([...d.querySelectorAll('#commuteLevel option')].map(o=>o.value),['400','500','600','700','800','900']);
  let calls=[];w.callOpenAiJson=async args=>{assert.equal(JSON.parse(args.input).level,600);assert.match(args.instruction,/targeting TOEIC 600/);const type=JSON.parse(args.input).type;calls.push(type);return fixture(type);};
  d.getElementById('commutePrimary').click();await tick();await tick();assert.deepEqual(calls,['Part 7','Part 5','語彙']);
  assert.equal(d.querySelectorAll('.commute-question').length,3);
@@ -56,6 +56,40 @@ const fixture = type => ({title:'Office update',passage:type==='Part 7'?Array(18
  d.getElementById('commuteResume').click();assert.equal(d.querySelectorAll('.commute-feedback').length,3);
  for(let i=0;i<3;i++)d.getElementById('commuteReviewNext').click();
  assert.equal(JSON.parse(w.localStorage.getItem('tangoCho2CommuteHistory:v1')).length,1);
+ for (const [level, length, words] of [[400,'65-100',80],[500,'90-140',110]]) {
+   dom.window.close();
+   ({dom,w,d}=await init({'tangoCho2CommuteLevel:v1':String(level),'tangoCho2CommuteAutoPrepare:v1':'false'}));
+   w.eval("saveWords([{id:'advanced',word:'notwithstanding',meaning:'にもかかわらず'}])");
+   const beginnerCalls=[];
+   w.callOpenAiJson=async ({input,instruction,responseSchema})=>{
+     const {type,level:requestedLevel,savedTargets}=JSON.parse(input);
+     beginnerCalls.push(type);
+     assert.equal(requestedLevel,level);
+     assert.equal(savedTargets[0].word,'notwithstanding');
+     assert.match(instruction,/optional vocabulary candidates/);
+     const group=fixture(type);
+     if(type==='Part 7'){
+       assert(instruction.includes(length+' word'));
+       if(beginnerCalls.length>1)group.passage=Array(words).fill('office').join(' ');
+     }
+     if(type==='Part 5'){
+       assert.equal(responseSchema.properties.questions.minItems,5);
+       group.questions=Array.from({length:5},(_,i)=>({...group.questions[0],prompt:`The office ____ open at ${i+8}.`}));
+     }
+     return group;
+   };
+   d.getElementById('commutePrimary').click();await tick();await tick();
+   const key='tangoCho2Commute:v1';
+   const beginner=JSON.parse(w.localStorage.getItem(key));
+   assert.deepEqual(beginnerCalls,['Part 7','Part 7','Part 5','語彙']);
+   assert.equal(beginner.level,level);
+   assert.deepEqual(beginner.groups.map(group=>group.questions.length),[3,5,5]);
+   assert(beginner.groups[1].questions.every(question=>!question.category));
+   dom.window.close();
+   ({dom,w,d}=await init({[key]:JSON.stringify(beginner),'tangoCho2CommuteAutoPrepare:v1':'false'}));
+   assert.match(d.getElementById('commutePractice').textContent,new RegExp(level+'点'));
+   assert.equal(d.getElementById('commutePrimary').textContent,'続きから');
+ }
  for(const level of [700,800,900]){
    dom.window.close();({dom,w,d}=await init({'tangoCho2CommuteLevel:v1':JSON.stringify(level),'tangoCho2CommuteAutoPrepare:v1':'false'}));
    d.getElementById('commuteMode').value='Part 5';
