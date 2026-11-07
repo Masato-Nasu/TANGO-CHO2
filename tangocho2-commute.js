@@ -490,7 +490,7 @@
       const term=reviewItem.session.groups[reviewIndex].questions[i].terms[j];
       if(button.hasAttribute('data-review-speak')){speak(term.word);return;}
       if(registered(term.word)){button.textContent='登録済み';return;}
-      try{saveWords([...loadWords(),{id:`review-${Date.now()}-${Math.random().toString(36).slice(2)}`,word:term.word,meaning:term.meaning,status:'default',example:term.example,exampleTranslation:term.translation,synonyms:'',memo:`発音: ${term.pronunciation}\nコロケーション: ${term.collocation}`,tags:'TOEIC,通勤練習',source:'commute-review',createdAt:new Date().toISOString()}]);button.textContent='登録済み';}
+      try{saveWords([...loadWords(),{id:`review-${Date.now()}-${Math.random().toString(36).slice(2)}`,word:term.word,meaning:term.meaning,status:'default',example:term.example,exampleTranslation:term.translation,synonyms:'',memo:`発音: ${term.pronunciation}\nコロケーション: ${term.collocation}`,tags:'TOEIC',source:'commute-review',createdAt:new Date().toISOString()}]);button.textContent='登録済み';}
       catch{message('単語を保存できませんでした。端末の空き容量を確認してください。');}
     });
     root.addEventListener('change',ev => {
@@ -531,7 +531,7 @@
         if (registered(t.word)) { button.textContent = '登録済み'; return; }
         try {
           const now = new Date().toISOString();
-          saveWords([...loadWords(),{id:`commute-${Date.now()}-${Math.random().toString(36).slice(2)}`,word:t.word,meaning:t.meaning,status:'default',example:t.example,exampleTranslation:t.translation,synonyms:'',memo:`発音: ${t.pronunciation}\nコロケーション: ${t.collocation}`,tags:'TOEIC,通勤練習',source:'commute',createdAt:now}]);
+          saveWords([...loadWords(),{id:`commute-${Date.now()}-${Math.random().toString(36).slice(2)}`,word:t.word,meaning:t.meaning,status:'default',example:t.example,exampleTranslation:t.translation,synonyms:'',memo:`発音: ${t.pronunciation}\nコロケーション: ${t.collocation}`,tags:'TOEIC',source:'commute',createdAt:now}]);
           button.textContent = '登録済み'; message(`${t.word}を単語帳に登録しました。`);
         } catch { message('単語を保存できませんでした。'); }
       }

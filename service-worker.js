@@ -1,6 +1,6 @@
 /* TANGO-CHO2 Service Worker */
 const CACHE_PREFIX = 'tango-cho2-cache-';
-const CACHE_NAME = `${CACHE_PREFIX}v0.42.2`;
+const CACHE_NAME = `${CACHE_PREFIX}v0.42.3`;
 
 const CORE_ASSETS = [
   "./",
@@ -11,14 +11,14 @@ const CORE_ASSETS = [
   "./tangocho2-theme.css?v=0.3.0",
   "./tangocho2-layout-fix.css?v=0.7.0",
   "./tangocho2-storage-shim.js?v=0.2.0",
-  "./script.js?v=48.0.10",
+  "./script.js?v=48.0.11",
   "./api-response-fix.js?v=48.0.8",
   "./tangocho2-example-sync.js?v=0.4.0",
   "./tangocho2-behavior.js?v=0.3.1",
   "./tangocho2-grammar.js?v=0.1.1",
-  "./tangocho2-commute.js?v=0.9.1",
+  "./tangocho2-commute.js?v=0.9.2",
   "./tangocho2-notifications.js?v=0.4.1",
-  "./tangocho2-word-tap.js?v=0.2.1",
+  "./tangocho2-word-tap.js?v=0.2.2",
   "./tangocho2-study-time.js?v=0.2.0",
   "./tangocho2-backup.js?v=0.13.0",
   "./tangocho2-spelling.js?v=0.7.1",

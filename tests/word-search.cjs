@@ -16,7 +16,7 @@ const repo=path.resolve(__dirname,'..');
  const words=()=>page.locator('#wordList .word-main').allTextContents();
  await page.getByRole('searchbox',{name:'英単語を検索'}).fill('flu');assert.deepEqual(await words(),['flurry']);
  await page.locator('#wordSearch').fill(' COUNT ');assert.deepEqual(await words(),['Accounting','accountable']);assert.equal(await page.locator('#wordSearchResult').textContent(),'検索結果：2語');
- await page.locator('#statusFilter').selectOption('forgot');assert.deepEqual(await words(),['accountable']);await page.locator('#statusFilter').selectOption('all');await page.locator('#tagFilter').selectOption('work');assert.deepEqual(await words(),['Accounting']);
+ await page.locator('#statusFilter').selectOption('forgot');assert.deepEqual(await words(),['accountable']);await page.locator('#statusFilter').selectOption('all');assert.equal(await page.locator('#wordTagFilter').getAttribute('open'),null);await page.locator('#wordTagFilterLabel').click();await page.locator('#tagFilter').selectOption('work');assert.deepEqual(await words(),['Accounting']);assert.equal(await page.locator('#wordTagFilterLabel').textContent(),'タグ：work');
  await page.locator('#tagFilter').selectOption('all');await page.locator('#sortOrder').selectOption('alpha');assert.deepEqual(await words(),['accountable','Accounting']);
  await page.locator('#wordSearch').fill('zzzzzz');assert.equal(await page.locator('#wordSearchResult').textContent(),'検索結果：0語');assert((await page.locator('#wordList').textContent()).includes('該当する単語がありません'));
  await page.locator('#wordSearch').fill('');assert.equal((await words()).length,3);assert(!(await page.locator('#wordSearchResult').isVisible()));assert.equal(await page.evaluate(()=>localStorage.getItem('tangoCho2Words')),baseline);

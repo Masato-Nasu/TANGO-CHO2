@@ -12,7 +12,7 @@ const repo=path.resolve(__dirname,'..');
   if(!localStorage.getItem('tangoCho2Words'))localStorage.setItem('tangoCho2Words',JSON.stringify([{id:'flurry',word:'flurry',meaning:'にわか雪',status:'fuzzy',tags:'TOEIC',createdAt:'2020-01-01T00:00:00.000Z',posCandidates:['n']}]));
  });
  await page.goto('http://127.0.0.1:8772/');
- await page.locator('[data-section="listSection"]').tap();await page.locator('#statusFilter').selectOption('forgot');await page.locator('#tagFilter').selectOption('TOEIC');await page.locator('[data-section="addSection"]').tap();
+ await page.locator('[data-section="listSection"]').tap();await page.locator('#statusFilter').selectOption('forgot');await page.locator('#wordTagFilterLabel').tap();await page.locator('#tagFilter').selectOption('toeic');await page.locator('[data-section="addSection"]').tap();
  await page.locator('#word').fill('invoice');await page.locator('#meaning').fill('請求書');await page.locator('#saveBtn').tap();
  await page.waitForFunction(()=>loadWords().some(w=>w.word==='invoice'),null,{timeout:5000});
  await page.locator('#savedWordViewBtn').tap();assert.equal(await page.locator('#sortOrder').inputValue(),'time');assert.equal(await page.locator('#wordList .word-main').first().textContent(),'invoice');assert.equal(await page.locator('#statusFilter').inputValue(),'all');assert.equal(await page.locator('#tagFilter').inputValue(),'all');

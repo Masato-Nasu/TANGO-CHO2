@@ -153,10 +153,11 @@
               <option value="learned">覚えた</option>
             </select>
           </div>
-          <div>
-            <label class="field-label" for="tags">タグ（任意・カンマ区切り）</label>
-            <input id="tags" type="text" placeholder="例: TOEIC, business" />
-          </div>
+          <details id="wordTagEditor">
+            <summary>タグを付ける</summary>
+            <input id="tags" type="text" aria-label="タグ" aria-describedby="tagHint" placeholder="例：仕事" />
+            <p class="note" id="tagHint">複数のタグはカンマで区切ります。</p>
+          </details>
         </div>
 
         <label class="field-label" for="synonyms">類似語 / 同義語（任意・カンマ区切り）</label>
@@ -209,13 +210,10 @@
               <option value="default">デフォルト</option>
               <option value="learned">覚えた</option>
             </select>
-            <select id="tagFilter" class="select small" title="タグ">
-              <option value="all">タグ: 全て</option>
-            </select>
             <select id="sortOrder" class="select small" title="並び順">
               <option value="time">時系列</option>
               <option value="alpha">ABC</option>
-              <option value="tag">タグ</option>
+              <option value="tag">タグ順</option>
             </select>
 </div>
         </div>
@@ -223,6 +221,13 @@
         <label class="field-label" for="wordSearch">英単語を検索</label>
         <input id="wordSearch" type="text" role="searchbox" lang="en" autocapitalize="none" autocomplete="off" spellcheck="false" aria-describedby="wordSearchResult">
         <p id="wordSearchResult" class="note" role="status" hidden></p>
+
+        <details id="wordTagFilter" hidden>
+          <summary id="wordTagFilterLabel">タグで絞る</summary>
+          <select id="tagFilter" class="select small" aria-label="絞り込むタグ">
+            <option value="all">すべてのタグ</option>
+          </select>
+        </details>
 
         <div id="listCounts" class="list-counts"></div>
 
@@ -276,13 +281,13 @@
   <script src="bank_enja.js"></script>
   <script src="vocab_pool.js"></script>
   <script src="tangocho2-storage-shim.js?v=0.2.0"></script>
-  <script src="script.js?v=48.0.10"></script>
+  <script src="script.js?v=48.0.11"></script>
   <script src="api-response-fix.js?v=48.0.8"></script>
   <script src="tangocho2-behavior.js?v=0.3.1"></script>
   <script src="tangocho2-grammar.js?v=0.1.1"></script>
-  <script src="tangocho2-commute.js?v=0.9.1"></script>
+  <script src="tangocho2-commute.js?v=0.9.2"></script>
   <script src="tangocho2-notifications.js?v=0.4.1"></script>
-  <script src="tangocho2-word-tap.js?v=0.2.1"></script>
+  <script src="tangocho2-word-tap.js?v=0.2.2"></script>
   <script src="tangocho2-study-time.js?v=0.2.0"></script>
   <script src="tangocho2-backup.js?v=0.13.0"></script>
   <script src="tangocho2-spelling.js?v=0.7.1"></script>
@@ -292,7 +297,7 @@
     });
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=0.42.2", { updateViaCache: 'none' })
+        navigator.serviceWorker.register("./service-worker.js?v=0.42.3", { updateViaCache: 'none' })
           .then(reg => reg.update()).catch(console.error);
       });
     }

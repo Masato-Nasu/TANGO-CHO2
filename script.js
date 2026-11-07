@@ -1170,6 +1170,7 @@ function setupAddForm() {
   exampleEl.addEventListener("input", () => { if (exampleTranslationEl) exampleTranslationEl.value = ""; });
   const memoEl = document.getElementById("memo");
   const tagsEl = document.getElementById("tags");
+  const tagEditor = document.getElementById("wordTagEditor");
   const synonymsEl = document.getElementById("synonyms");
   const synFetchBtn = document.getElementById("synFetchBtn");
   const translateBtn = document.getElementById("translateBtn");
@@ -1229,6 +1230,7 @@ function setState(text) {
     if (exampleTranslationEl) exampleTranslationEl.value = "";
     memoEl.value = "";
     tagsEl.value = "";
+    if (tagEditor) tagEditor.open = false;
     if (synonymsEl) synonymsEl.value = "";
     setState("未翻訳");
     if (!afterSave) setMsg("", "");
@@ -1245,6 +1247,7 @@ function setState(text) {
     if (exampleTranslationEl) exampleTranslationEl.value = item.exampleTranslation || "";
     memoEl.value = item.memo || "";
     tagsEl.value = item.tags || "";
+    if (tagEditor) tagEditor.open = Boolean(tagsEl.value);
     if (synonymsEl) synonymsEl.value = item.synonyms || "";
 
     if (editBanner) editBanner.style.display = "flex";
@@ -1798,13 +1801,10 @@ function capToFortuneLevel(cap){
 
 
 
-function renderListCounts(baseWords, tagFilterValue){
+function renderListCounts(baseWords){
   const el = document.getElementById("listCounts");
   if (!el) return;
 
-  const tf = String(tagFilterValue || "all").trim();
-
-  const total = (baseWords || []).length;
   let forgot = 0, fuzzy = 0, def = 0, learned = 0;
   for (const w of (baseWords || [])) {
     const st = (w && w.status) ? String(w.status) : "default";
@@ -1814,13 +1814,7 @@ function renderListCounts(baseWords, tagFilterValue){
     else def++;
   }
 
-  // Avoid repeating "全て" three times (header + tag label + pill).
-  // - When tag is "all": show only the breakdown.
-  // - When a specific tag is selected: show the tag count + breakdown.
-  const tagPill = (tf === "all") ? "" : `<span class="count-pill">タグ: ${tf} <b>${total}</b></span>`;
-
   el.innerHTML = `
-    ${tagPill}
     <span class="count-pill">覚えた <b>${learned}</b></span>
     <span class="count-pill">デフォルト <b>${def}</b></span>
     <span class="count-pill">うろ覚え <b>${fuzzy}</b></span>
@@ -1832,7 +1826,6 @@ function renderWordList() {
   const listEl = document.getElementById("wordList");
   const countEl = document.getElementById("wordCount");
   const filter = (localStorage.getItem(FILTER_KEY) || "all").trim();
-  const tagFilter = (localStorage.getItem(TAG_FILTER_KEY) || "all").trim();
   const sortOrder = (localStorage.getItem(SORT_KEY) || "time").trim();
 const all = loadWords();
 
@@ -1850,7 +1843,7 @@ if (tfRaw !== "all") {
 }
 
 // Update counts (linked to tag switching)
-renderListCounts(baseWords, tfRaw);
+renderListCounts(baseWords);
 
 // Header count shows current base set size
 if (countEl) countEl.textContent = String(baseWords.length);
@@ -1948,10 +1941,10 @@ listEl.innerHTML = "";
     const meta = document.createElement("div");
     meta.className = "word-meta";
     const created = w.createdAt ? new Date(w.createdAt).toLocaleString() : "";
-    const tags = w.tags ? ` / タグ: ${w.tags}` : "";
+    const tags = parseTags(w.tags).join(" · ");
     const pos = (Array.isArray(w.posCandidates) && w.posCandidates.length) ? ` / 品詞: ${__formatPosJa(w.posCandidates)}` : "";
     const st = ` / ${STATUS_LABEL[w.status || "default"]}`;
-    meta.textContent = `登録: ${created}${tags}${pos}${st}`;
+    meta.textContent = `登録: ${created}${pos}${st}${tags ? ` / ${tags}` : ""}`;
 
     const actions = document.createElement("div");
     actions.className = "word-actions";
@@ -2057,12 +2050,16 @@ function syncTagFilterOptions(allWords) {
   if (!sel) return;
   const opts = collectTagOptions(allWords);
   const keep = (localStorage.getItem(TAG_FILTER_KEY) || sel.value || "all").trim() || "all";
-  sel.innerHTML = `<option value="all">タグ: 全て</option>` + opts.map(o => `<option value="${o.norm}">${o.display}</option>`).join("");
-  if (sel.querySelector(`option[value="${keep}"]`)) {
-    sel.value = keep;
-  } else {
-    sel.value = "all";
-    localStorage.setItem(TAG_FILTER_KEY, "all");
+  const allLabel = sel.closest("#wordTagFilter") ? "すべてのタグ" : "タグ: 全て";
+  sel.replaceChildren(new Option(allLabel, "all"), ...opts.map(({norm, display}) => new Option(display, norm)));
+  const selected = opts.find(({norm}) => norm === keep && norm !== "all");
+  sel.value = selected?.norm || "all";
+  if (!selected && keep !== "all") localStorage.setItem(TAG_FILTER_KEY, "all");
+
+  const panel = document.getElementById("wordTagFilter");
+  if (panel) {
+    panel.hidden = opts.length === 0;
+    document.getElementById("wordTagFilterLabel").textContent = selected ? `タグ：${selected.display}` : "タグで絞る";
   }
 }
 

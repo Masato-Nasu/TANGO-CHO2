@@ -118,7 +118,7 @@
       if(savedWord(selected.word)){paint(selected.info,'登録済みです。');return;}
       try{
         const {word,info}=selected;const now=new Date().toISOString();
-        saveWords([...loadWords(),{id:`tap-${Date.now()}-${Math.random().toString(36).slice(2)}`,word,meaning:info.meaning,status:'default',example:info.example||'',exampleTranslation:info.exampleTranslation||'',synonyms:'',memo:[info.pronunciation&&`発音: ${info.pronunciation}`,info.lemma&&norm(info.lemma)!==norm(word)&&`原形: ${info.lemma}`,info.memo].filter(Boolean).join('\n'),tags:'TOEIC,タップで追加',source:'word-tap',createdAt:now}]);
+        saveWords([...loadWords(),{id:`tap-${Date.now()}-${Math.random().toString(36).slice(2)}`,word,meaning:info.meaning,status:'default',example:info.example||'',exampleTranslation:info.exampleTranslation||'',synonyms:'',memo:[info.pronunciation&&`発音: ${info.pronunciation}`,info.lemma&&norm(info.lemma)!==norm(word)&&`原形: ${info.lemma}`,info.memo].filter(Boolean).join('\n'),tags:'TOEIC',source:'word-tap',createdAt:now}]);
         paint(info,'単語帳に登録しました。');
       }catch{dialog.querySelector('#tc2LookupStatus').textContent='単語を保存できませんでした。端末の空き容量を確認してください。';}
     });
