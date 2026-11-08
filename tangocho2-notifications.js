@@ -33,7 +33,7 @@
         await api(`/subscriptions/${state.id}`,{method:'PUT',body:{times},auth:true});
       }
       state.times=times;save();renderTimes();msg(state.id?'通知時刻を変更しました。':'通知時刻を保存しました。配信には通知の有効化が必要です。');
-    }catch(e){msg(e.message||'通知時刻を保存できませんでした。');}
+    }catch(e){if(!recoverRegistration(e))msg(e.message||'通知時刻を保存できませんでした。');}
     finally{busy=false;refresh();}
   }
   const supports=()=> 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
@@ -44,7 +44,30 @@
     const headers={};if(body)headers['Content-Type']='application/json';if(auth)headers.Authorization=`Bearer ${state.token}`;
     const response=await fetch(state.server+path,{method,headers,body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(20000)});
     let data={};try{data=await response.json();}catch{}
-    if(!response.ok)throw new Error(data.error||'通知サーバーへ接続できませんでした。');return data;
+    if(!response.ok){
+      const error = new Error(data.error||'通知サーバーへ接続できませんでした。');
+      error.registrationRejected = auth && response.status === 401;
+      throw error;
+    }
+    return data;
+  }
+  function recoverRegistration(error, message='以前の通知登録が無効です。保存した時刻で「通知を有効にする」を押して再登録してください。'){
+    if(!error.registrationRejected)return false;
+    const previous = state;
+    state = {server:previous.server,times:previous.times};
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY)||'{}');
+      if(saved?.id && (saved.id!==previous.id || saved.token!==previous.token)){
+        msg('別の画面で通知登録が更新されました。アプリを開き直してください。');
+        config=null;
+        return true;
+      }
+      save();
+      msg(message);
+    } catch {
+      msg('通知の再設定を保存できませんでした。端末の保存容量を確認してから開き直してください。');
+    }
+    return true;
   }
   async function connect(){
     if(busy)return;
@@ -63,7 +86,10 @@
         }
         save();
         msg(config.scheduleVersion!==2?'配信サーバーの更新が必要です。接続先の詳細の手順で更新してください。':state.id?'通知サーバーに接続しました。':'接続しました。「通知を有効にする」を押してください。');
-      }catch(e){state.server=previous;config=null;throw e;}
+      }catch(e){
+        if(recoverRegistration(e))return;
+        state.server=previous;config=null;throw e;
+      }
     }catch(e){msg(e.message||'接続できませんでした。');}
     finally{busy=false;refresh();}
   }
@@ -120,8 +146,13 @@
   async function disable(){
     if(busy||!state.id)return;busy=true;refresh();
     try{
-      await api(`/subscriptions/${state.id}`,{method:'DELETE',auth:true});
-      state={server:state.server,times:state.times};save();
+      try {
+        await api(`/subscriptions/${state.id}`,{method:'DELETE',auth:true});
+        state={server:state.server,times:state.times};save();
+      } catch(e) {
+        if(!recoverRegistration(e,'以前の通知登録は無効です。この端末の通知を解除します。'))throw e;
+        if(!config)return;
+      }
       try{const registration=await navigator.serviceWorker.ready;const sub=await registration.pushManager.getSubscription();if(sub)await sub.unsubscribe();}catch{}
       msg('学習通知を解除しました。');
     }catch(e){msg(e.message||'通知を解除できませんでした。通信を確認して再度お試しください。');}
@@ -129,7 +160,7 @@
   }
   async function test(){
     if(busy||!state.id)return;busy=true;refresh();
-    try{await api(`/subscriptions/${state.id}/test`,{method:'POST',auth:true});msg('テスト通知を送信しました。スマホの通知を確認してください。');}catch(e){msg(e.message||'送信できませんでした。');}finally{busy=false;refresh();}
+    try{await api(`/subscriptions/${state.id}/test`,{method:'POST',auth:true});msg('テスト通知を送信しました。スマホの通知を確認してください。');}catch(e){if(!recoverRegistration(e))msg(e.message||'送信できませんでした。');}finally{busy=false;refresh();}
   }
   function openPractice(){if(location.hash==='#commute')document.querySelector('[data-section="commuteSection"]')?.click();}
   function init(){

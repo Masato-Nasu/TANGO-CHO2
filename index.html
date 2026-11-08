@@ -287,7 +287,7 @@
   <script src="tangocho2-grammar.js?v=0.1.1"></script>
   <script src="tangocho2-beginner-bank.js?v=1"></script>
   <script src="tangocho2-commute.js?v=0.9.6"></script>
-  <script src="tangocho2-notifications.js?v=0.4.1"></script>
+  <script src="tangocho2-notifications.js?v=0.4.2"></script>
   <script src="tangocho2-word-tap.js?v=0.2.2"></script>
   <script src="tangocho2-study-time.js?v=0.2.0"></script>
   <script src="tangocho2-backup.js?v=0.13.0"></script>
@@ -298,7 +298,7 @@
     });
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=0.42.8", { updateViaCache: 'none' })
+        navigator.serviceWorker.register("./service-worker.js?v=0.42.9", { updateViaCache: 'none' })
           .then(reg => reg.update()).catch(console.error);
       });
     }
