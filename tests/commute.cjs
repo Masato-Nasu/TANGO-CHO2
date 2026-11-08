@@ -77,18 +77,24 @@ const fixture = type => ({title:'Office update',passage:type==='Part 7'?Array(18
      }
      if(type==='Part 5'){
        assert.equal(responseSchema.properties.questions.minItems,5);
-       group.questions=Array.from({length:5},(_,i)=>({...group.questions[0],prompt:`The office ____ open at ${i+8}.`}));
+       const explanation=beginnerCalls.filter(call=>call===type).length===1 ? 'The subject is singular, so the correct answer is is.' : '主語が単数なのでこの形を使います。';
+       group.questions=Array.from({length:5},(_,i)=>({...group.questions[0],prompt:`The office ____ open at ${i+8}.`,explanation}));
      }
      if(type==='語彙'){
        assert.match(instruction,/very short Japanese meanings/);
-       for(const question of group.questions)question.options=['提出する','開く','読む','買う'];
+       const first=beginnerCalls.filter(call=>call===type).length===1;
+       for(const question of group.questions){
+         question.options=['提出する','開く','読む','買う'];
+         question.prompt=first ? '"on" the table or under it?' : 'Please "submit" the report.';
+         question.explanation='This explains the answer in English.';
+       }
      }
      return group;
    };
    d.getElementById('commutePrimary').click();await tick();await tick();
    const key='tangoCho2Commute:v1';
    const beginner=JSON.parse(w.localStorage.getItem(key));
-   assert.deepEqual(beginnerCalls,['Part 7','Part 7','Part 5','語彙']);
+   assert.deepEqual(beginnerCalls,['Part 7','Part 7','Part 5','Part 5','語彙','語彙']);
    assert.equal(beginner.level,level);
    assert.deepEqual(beginner.groups.map(group=>group.questions.length),[3,5,5]);
    assert(beginner.groups[1].questions.every(question=>!question.category));
@@ -96,6 +102,13 @@ const fixture = type => ({title:'Office update',passage:type==='Part 7'?Array(18
    ({dom,w,d}=await init({[key]:JSON.stringify(beginner),'tangoCho2CommuteAutoPrepare:v1':'false'}));
    assert.match(d.getElementById('commutePractice').textContent,new RegExp(level+'点'));
    assert.equal(d.getElementById('commutePrimary').textContent,'続きから');
+   const vocabulary={...beginner,index:2,groups:beginner.groups.map(group=>({...group,graded:true}))};
+   dom.window.close();
+   ({dom,w,d}=await init({[key]:JSON.stringify(vocabulary),'tangoCho2CommuteAutoPrepare:v1':'false'}));
+   const practice=d.getElementById('commutePractice');
+   assert.match(practice.textContent,/引用符で囲んだ語の意味を、日本語の選択肢から選んでください/);
+   assert.match(practice.textContent,/「submit」は、この文では「提出する」という意味です/);
+   assert.doesNotMatch(practice.textContent,/This explains the answer in English/);
    {
      const queueKey='tangoCho2CommuteQueue:v1';
      const old=JSON.parse(JSON.stringify(beginner));
