@@ -56,7 +56,7 @@ const fixture = type => ({title:'Office update',passage:type==='Part 7'?Array(18
  d.getElementById('commuteResume').click();assert.equal(d.querySelectorAll('.commute-feedback').length,3);
  for(let i=0;i<3;i++)d.getElementById('commuteReviewNext').click();
  assert.equal(JSON.parse(w.localStorage.getItem('tangoCho2CommuteHistory:v1')).length,1);
- for (const [level, length, words] of [[400,'40-60',48],[500,'90-140',110]]) {
+ for (const [level, length, words] of [[400,'40-60',48],[500,'55-80',64]]) {
    dom.window.close();
    ({dom,w,d}=await init({'tangoCho2CommuteLevel:v1':String(level),'tangoCho2CommuteAutoPrepare:v1':'false'}));
    w.eval("saveWords([{id:'advanced',word:'notwithstanding',meaning:'にもかかわらず'}])");
@@ -73,13 +73,13 @@ const fixture = type => ({title:'Office update',passage:type==='Part 7'?Array(18
      const group=fixture(type);
      if(type==='Part 7'){
        assert(instruction.includes(length+' word'));
-       if(beginnerCalls.length>1)group.passage=level===400 ? Array(words/8).fill('Our school shop is open every day now.').join(' ') : Array(words).fill('office').join(' ');
+       if(beginnerCalls.length>1)group.passage=Array(words/8).fill('Our school shop is open every day now.').join(' ');
      }
      if(type==='Part 5'){
        assert.equal(responseSchema.properties.questions.minItems,5);
        group.questions=Array.from({length:5},(_,i)=>({...group.questions[0],prompt:`The office ____ open at ${i+8}.`}));
      }
-     if(level===400 && type==='語彙'){
+     if(type==='語彙'){
        assert.match(instruction,/very short Japanese meanings/);
        for(const question of group.questions)question.options=['提出する','開く','読む','買う'];
      }
@@ -96,14 +96,14 @@ const fixture = type => ({title:'Office update',passage:type==='Part 7'?Array(18
    ({dom,w,d}=await init({[key]:JSON.stringify(beginner),'tangoCho2CommuteAutoPrepare:v1':'false'}));
    assert.match(d.getElementById('commutePractice').textContent,new RegExp(level+'点'));
    assert.equal(d.getElementById('commutePrimary').textContent,'続きから');
-   if(level===400){
+   {
      const queueKey='tangoCho2CommuteQueue:v1';
      const old=JSON.parse(JSON.stringify(beginner));
-     delete old.basic400;
-     old.id='previous-400';
-     old.groups[0].passage=Array(80).fill('office').join(' ');
+     delete old.easyLevel;
+     old.id='previous-'+level;
+     old.groups[0].passage=Array(level===400?80:110).fill('office').join(' ');
      dom.window.close();
-     ({dom,w,d}=await init({[key]:JSON.stringify(beginner),[queueKey]:JSON.stringify([old]),'tangoCho2CommuteLevel:v1':'400','tangoCho2CommuteAutoPrepare:v1':'false'}));
+     ({dom,w,d}=await init({[key]:JSON.stringify(beginner),[queueKey]:JSON.stringify([old]),'tangoCho2CommuteLevel:v1':String(level),'tangoCho2CommuteAutoPrepare:v1':'false'}));
      assert.match(d.getElementById('commuteStart').textContent,/作り直す/);
      w.callOpenAiJson=async ({input})=>{
        const {type}=JSON.parse(input);
@@ -113,7 +113,7 @@ const fixture = type => ({title:'Office update',passage:type==='Part 7'?Array(18
      const activeBefore=w.localStorage.getItem(key);
      d.getElementById('commuteStart').click();await tick();await tick();
      const queue=JSON.parse(w.localStorage.getItem(queueKey));
-     assert.equal(queue.length,1);assert(queue[0].basic400);assert.notEqual(queue[0].id,old.id);
+     assert.equal(queue.length,1);assert.equal(queue[0].easyLevel,level);assert.notEqual(queue[0].id,old.id);
      assert.equal(w.localStorage.getItem(key),activeBefore);
    }
  }
