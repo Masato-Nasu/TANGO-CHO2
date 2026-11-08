@@ -14,6 +14,7 @@ async function init(type='wifi',storage={},failAt=0){
  w.eval('setupTabs();setupAddForm();ensureAiSettingsLoaded=async()=>({});getOpenAiApiKey=()=>"test-placeholder";');
  let calls=[];w.callOpenAiJson=async args=>{const data=JSON.parse(args.input);calls.push(data);if(calls.length===failAt)throw new Error('AI unavailable');return fixture(data.type,calls.length);};
  w.eval(fs.readFileSync(path.join(repo,'tangocho2-grammar.js'),'utf8'));
+ w.eval(fs.readFileSync(path.join(repo,'tangocho2-beginner-bank.js'),'utf8'));
  w.eval(fs.readFileSync(path.join(repo,'tangocho2-commute.js'),'utf8'));await tick();
  return {dom,w,d,calls,connection,snapshot:()=>Object.fromEntries(Object.keys(w.localStorage).map(k=>[k,w.localStorage.getItem(k)]))};
 }
@@ -34,6 +35,32 @@ async function init(type='wifi',storage={},failAt=0){
  }
  assert.match(a.d.getElementById('commutePractice').textContent,/13 \/ 13/);a.d.getElementById('commutePrimary').click();assert.notEqual(JSON.parse(a.w.localStorage.getItem(S)).id,active.id);assert.equal(a.calls.length,0);assert.equal(JSON.parse(a.w.localStorage.getItem(Q)).length,0);a.dom.window.close();
  a=await init('wifi',{},4);await wait(()=>a.d.getElementById('commuteOfflineStatus').textContent.includes('AI unavailable'));assert.equal(JSON.parse(a.w.localStorage.getItem(Q)).length,1);a.w.dispatchEvent(new a.w.Event('offline'));assert(a.d.getElementById('commuteOfflineStatus').textContent.includes('AI unavailable'));a.d.dispatchEvent(new a.w.Event('visibilitychange'));await wait(()=>JSON.parse(a.w.localStorage.getItem(Q)).length===2);assert.equal(a.calls.length,7);a.dom.window.close();
+ // Invalid AI results must still produce usable beginner sets. Preserve the
+ // older, different-level set and open the selected level first.
+ for (const level of [400,500]) {
+  const keep = {...queued[0],level:900};
+  a=await init('wifi',{[Q]:JSON.stringify(level===400?[keep]:[]),'tangoCho2CommuteLevel:v1':String(level)});
+  const prepared=()=>JSON.parse(a.w.localStorage.getItem(Q)||'[]');
+  await wait(()=>prepared().length===2);
+  assert.equal(a.calls.length,level===400?6:12);
+  assert(a.calls.every(request=>request.level===level));
+  const beginner=prepared().filter(item=>item.level===level);
+  assert.equal(beginner.length,level===400?1:2);
+  if(level===400)assert.deepEqual(prepared()[0],keep);
+  for (const item of beginner) {
+   assert.deepEqual(item.groups.map(group=>group.questions.length),[3,5,5]);
+   const count=item.groups[0].passage.split(/\s+/).length;
+   assert(count>=(level===400?40:55) && count<=(level===400?60:80));
+   assert(item.groups[2].questions.every(q=>q.options.every(o=>/[ぁ-んァ-ヶ一-龯]/.test(o))));
+  }
+  if(level===500)assert.notEqual(beginner[0].groups[0].title,beginner[1].groups[0].title);
+  const saved=a.snapshot();a.dom.window.close();a=await init('offline',saved);
+  assert.equal(prepared().length,2);
+  a.d.getElementById('commutePrimary').click();
+  assert.equal(JSON.parse(a.w.localStorage.getItem(S)).level,level);
+  assert.equal(a.calls.length,0);
+  a.dom.window.close();
+ }
  // A slow second set must neither lock the saved set nor repeat completed parts.
  a=await init('wifi',{[Q]:JSON.stringify([queued[0]])});
  let finishReading;
