@@ -23,14 +23,14 @@
 
 5 WORDSと単独のPART 5タブは通勤テストに統合しました。作問にはOpenAI APIキーを使い、準備済みのテストはオフラインでも解けます。
 
-<details>
-<summary>旧画面と過去の更新記録</summary>
-
 ## UI Preview
 
 <p align="center">
-  <img src="https://masato-lab.pages.dev/media/portfolio/2026-11-05T20-51-09-517Z-tangocho2-toeic-practice.jpg" width="900" alt="TANGO-CHO2 TOEIC practice home screen">
+  <img src="./docs/tangocho2-current.jpg" width="755" alt="TANGO-CHO2の通勤テスト画面。単語帳と通勤テストの2つのタブ">
 </p>
+
+<details>
+<summary>過去の更新記録</summary>
 
 TANGO-CHOをベースに、従来の **Fortune(EN)** を廃止し、5語をAIが選ぶ **5 WORDS** を語彙発見の入口として統合しました。
 
